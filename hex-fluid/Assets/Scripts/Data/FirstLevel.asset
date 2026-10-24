@@ -52,7 +52,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 2
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 0
@@ -84,7 +84,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: -1
@@ -100,7 +100,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: -1
@@ -108,7 +108,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 0

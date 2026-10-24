@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66927950049764941b31001d13086d71, type: 3}
+  m_Name: NewResourceDropSet
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.ResourceDropSet
+  drops:
+  - resource: 1
+    prefab: {fileID: 6499317132239409073, guid: aceeb0613f92a7440af0ffdf0de21690, type: 3}
+  - resource: 2
+    prefab: {fileID: 3398823021373643589, guid: 061f71b5cd7fa2a49ac7e0b707bc21fc, type: 3}
+  defaultPrefab: {fileID: 0}
