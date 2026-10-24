@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: eb415f127adeb534cb46035d10a1f6b7
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/MaterialsAndTextures/woodenTableRusticTop.mat
+  uploadId: 750726

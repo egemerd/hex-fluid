@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 48bbe4f05f7e1934d88c23925f6f4abe
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/MaterialsAndTextures/threeArmCandleHolderGold.mat
+  uploadId: 750726

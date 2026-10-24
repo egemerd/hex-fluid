@@ -3,20 +3,38 @@ using UnityEngine;
 namespace HexFluid
 {
     /// <summary>
-    /// Makes a sticker sprite feel alive: it pops in with a little overshoot, always
-    /// faces the camera, and sways left and right from its base with a gentle
-    /// squash and stretch. Every sticker starts at a random point in its sway so a
-    /// row of them never moves in lockstep.
+    /// Makes a sticker sprite feel alive, like a cheap hand-made stop-motion
+    /// animation: it only changes pose a few times a second (framesPerSecond) and
+    /// holds each pose in between, so it moves in choppy, laggy steps instead of a
+    /// smooth wobble. Each pose leans left/right with a little squash and stretch
+    /// and a small random jitter, so it reads as redrawn every frame. It pops in
+    /// (also in steps) and always faces the camera. Every sticker starts at a
+    /// random point so a row of them never moves in lockstep.
     ///
     /// Works on a world sprite (SpriteRenderer, faceCamera on) or a UI element
-    /// (faceCamera off: it just sways in its own plane). Put the pivot at the
-    /// bottom so the sway hinges there. Call Pop() to replay the pop-in.
+    /// (faceCamera off: it just moves in its own plane). Put the pivot at the
+    /// bottom so the lean hinges there. Call Pop() to replay the pop-in.
+    /// Turn 'choppy' off to get the old smooth sway back.
     /// </summary>
     public class StickerWobble : MonoBehaviour
     {
         [Tooltip("World stickers turn to face the camera. Turn off for UI.")]
         public bool faceCamera = true;
 
+        [Header("Low frame rate")]
+        [Tooltip("ON = hold each pose and jump to the next, like a laggy low-fps animation. OFF = smooth sway.")]
+        public bool choppy = true;
+
+        [Tooltip("Poses per second. Lower = laggier (6-10 reads as stop-motion).")]
+        [Min(1f)] public float framesPerSecond = 8f;
+
+        [Tooltip("Random extra lean per frame, in degrees, so each pose looks redrawn.")]
+        public float jitterAngle = 2.5f;
+
+        [Tooltip("Random extra size change per frame (0.03 = up to 3%).")]
+        public float jitterScale = 0.03f;
+
+        [Header("Motion")]
         [Tooltip("How far it leans to each side, in degrees.")]
         public float swingAngle = 12f;
 
@@ -31,6 +49,8 @@ namespace HexFluid
 
         private Vector3 _baseScale;
         private float _phase, _age;
+        private int _frame = int.MinValue;     // which held pose we're on
+        private float _jitterAngle, _jitterScale;
 
         private void Awake()
         {
@@ -45,10 +65,33 @@ namespace HexFluid
         private void LateUpdate()
         {
             _age += Time.deltaTime;
-            float t = Time.time * swingSpeed * Mathf.PI * 2f + _phase;
+            float time = Time.time;
+            float age = _age;
+
+            if (choppy)
+            {
+                // Snap the clock to the last whole frame: the pose only changes on frame ticks.
+                float step = 1f / Mathf.Max(1f, framesPerSecond);
+                int frame = Mathf.FloorToInt(time / step);
+                time = frame * step;
+                age = Mathf.Floor(_age / step) * step;
+
+                if (frame != _frame)
+                {
+                    _frame = frame;
+                    _jitterAngle = Random.Range(-jitterAngle, jitterAngle);
+                    _jitterScale = Random.Range(-jitterScale, jitterScale);
+                }
+            }
+            else
+            {
+                _jitterAngle = _jitterScale = 0f;
+            }
+
+            float t = time * swingSpeed * Mathf.PI * 2f + _phase;
 
             // Sway: a main swing plus a quicker, smaller one so it never looks mechanical.
-            float angle = Mathf.Sin(t) * swingAngle + Mathf.Sin(t * 2.3f + 1.7f) * swingAngle * 0.25f;
+            float angle = Mathf.Sin(t) * swingAngle + Mathf.Sin(t * 2.3f + 1.7f) * swingAngle * 0.25f + _jitterAngle;
 
             if (faceCamera)
             {
@@ -62,7 +105,7 @@ namespace HexFluid
             }
 
             // Pop in with overshoot, then breathe: taller as it swings through the middle.
-            float pop = EaseOutBack(Mathf.Clamp01(_age / Mathf.Max(0.01f, popDuration)));
+            float pop = EaseOutBack(Mathf.Clamp01(age / Mathf.Max(0.01f, popDuration))) * (1f + _jitterScale);
             float stretch = 1f + squash * Mathf.Cos(t * 2f);
             transform.localScale = new Vector3(_baseScale.x * pop / stretch, _baseScale.y * pop * stretch, _baseScale.z * pop);
         }

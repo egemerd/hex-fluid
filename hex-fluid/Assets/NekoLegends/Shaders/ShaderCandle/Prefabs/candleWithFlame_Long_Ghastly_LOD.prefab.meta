@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 70f3ee4439411ab43b59ae6460f981f4
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/Prefabs/candleWithFlame_Long_Ghastly_LOD.prefab
+  uploadId: 750726

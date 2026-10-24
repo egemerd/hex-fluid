@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b5dd0a228c42217468b0c5141521a0f2
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/CandleFlame.shader
+  uploadId: 750726

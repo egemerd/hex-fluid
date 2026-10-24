@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f8d61e1e5b723ab44bcb6fe373570cab
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 4300000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/Models/LOD/skullCandle_LOD1.asset
+  uploadId: 750726

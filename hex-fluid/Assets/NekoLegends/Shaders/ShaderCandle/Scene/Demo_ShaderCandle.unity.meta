@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 3f7d6c6a632398e448b192152c03485c
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/Scene/Demo_ShaderCandle.unity
+  uploadId: 750726

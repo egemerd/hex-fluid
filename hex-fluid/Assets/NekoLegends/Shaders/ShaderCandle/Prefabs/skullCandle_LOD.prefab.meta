@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: ec992a802bc57c54b90cc3ad96cdd27e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317942
+  packageName: Candle Flame Shader
+  packageVersion: 1.1.0
+  assetPath: Assets/NekoLegends/Shaders/ShaderCandle/Prefabs/skullCandle_LOD.prefab
+  uploadId: 750726
