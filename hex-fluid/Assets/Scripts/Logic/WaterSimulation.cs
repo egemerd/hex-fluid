@@ -12,8 +12,8 @@ namespace HexFluid
     /// Rules (all enforced here):
     ///   - Water starts at every Source tile.
     ///   - It only enters a neighbor that is lower down the board (the flow direction).
-    ///   - It can't cross a blocked edge (level.IsEdgeOpen) — this is where your future
-    ///     barricade / gate items plug in: they just set the edge, water already checks it.
+    ///   - It can't cross a Barricade, a bridge carries it across even if not downhill,
+    ///     and a fixed map wall always blocks (see ItemPlacementSystem).
     ///   - It can't enter a resource tile.
     ///   - Entering a City (house) = LOSE.
     ///   - Water settles with no city flooded = WIN.
@@ -28,6 +28,9 @@ namespace HexFluid
         [Header("References")]
         [Tooltip("Your HexBoard — provides the level, hexSize, and coordinate space.")]
         public HexBoard board;
+
+        [Tooltip("Placed items (barricades/bridges). Auto-found if empty. Optional.")]
+        public ItemPlacementSystem items;
 
         [Header("Water visual")]
         [Tooltip("Optional custom water prefab. Empty = a generated blue plane.")]
@@ -90,6 +93,7 @@ namespace HexFluid
             StopSimulation();
             ClearWater();
             Level.BuildLookups();
+            if (items == null) items = FindObjectOfType<ItemPlacementSystem>();
             Won = Lost = false;
 
             _waterRoot = new GameObject("WaterSim").transform;
@@ -142,8 +146,13 @@ namespace HexFluid
                     var n = cur.Neighbor(d);
                     if (_flooded.Contains(n)) continue;
                     if (!Level.HasTile(n)) continue;                 // off-board
-                    if (!IsDownhill(cur, n)) continue;               // only downward neighbors
-                    if (!Level.IsEdgeOpen(cur, n)) continue;         // blocked edge (future items set this)
+
+                    // Item effects on this edge (each item decides its own behaviour).
+                    if (items != null && items.IsEdgeBlocked(cur, n)) continue;   // barricade blocks
+                    if (!Level.IsEdgeOpen(cur, n)) continue;                       // fixed map wall blocks
+
+                    bool forced = items != null && items.IsEdgeForced(cur, n);     // bridge carries water across
+                    if (!forced && !IsDownhill(cur, n)) continue;                  // otherwise, downhill only
 
                     var td = Level.GetTile(n);
                     if (td == null) continue;
