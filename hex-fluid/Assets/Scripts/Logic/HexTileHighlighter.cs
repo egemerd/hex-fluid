@@ -12,15 +12,14 @@ namespace HexFluid
     /// down when you move off it. Nothing is drawn or spawned — it only moves the
     /// existing tile objects.
     ///
+    /// Plays nicely with TileDropAnimator: while a tile is still falling in, the
+    /// hover leaves it alone, and it only records a tile's resting height once the
+    /// tile has landed. So hovering during the drop no longer sends tiles flying.
+    ///
     /// Setup:
     ///   - Put this on your board GameObject and press Play.
-    ///   - Assign 'level' (the LevelData the board was built from).
-    ///   - Assign 'tilesParent' = the transform whose direct children are the tile
-    ///     objects. Leave empty to use 'board' (or this object if 'board' is empty).
-    ///
-    /// Works with any grid built from HexCoord.ToWorld — it doesn't call into a
-    /// specific HexBoard. HoveredTile / HasHover / HoverChanged are here so you can
-    /// hook harvesting onto the tile under the mouse later.
+    ///   - Assign 'level'. Assign 'tilesParent' = the transform whose direct children
+    ///     are the tile objects (empty = 'board' / this object).
     /// </summary>
     public class HexTileHover : MonoBehaviour
     {
@@ -71,8 +70,6 @@ namespace HexFluid
         private readonly Dictionary<Transform, float> _baseY = new Dictionary<Transform, float>();
         private readonly HashSet<Transform> _animating = new HashSet<Transform>();
 
-        // Auto-rebuild bookkeeping: the grid is often generated AFTER this wakes up,
-        // so we re-map whenever the tile parent's child count changes.
         private Transform _mappedRoot;
         private int _mappedChildCount = -1;
         private bool _warnedEmpty;
@@ -84,28 +81,26 @@ namespace HexFluid
             if (level != null) hexSize = level.hexSize;
         }
 
-        private void OnEnable()
-        {
-            RebuildTileMap();
-        }
-
-        private void OnDisable()
-        {
-            RestoreAllTiles();
-        }
+        private void OnEnable() => RebuildTileMap();
+        private void OnDisable() => RestoreLifted();
 
         private void OnValidate()
         {
             if (level != null) hexSize = level.hexSize;
         }
 
+        /// <summary>Is this tile still falling in (owned by a drop animator)?</summary>
+        private static bool IsDropping(Transform t) =>
+            t != null && t.GetComponent<TileDropAnimator>() != null;
+
         /// <summary>
-        /// Maps each tile object under 'tilesParent' to its hex coord, by reading its
-        /// position. Call this again whenever you rebuild the grid at runtime.
+        /// Maps each tile object under 'tilesParent' to its hex coord by its X/Z
+        /// (ignores Y, so it works even while tiles are mid-fall). Resting heights
+        /// are captured lazily once a tile has landed — not here.
         /// </summary>
         public void RebuildTileMap()
         {
-            RestoreAllTiles();
+            RestoreLifted();           // put back anything we had lifted, then remap
             _tileByCoord.Clear();
             _baseY.Clear();
             _animating.Clear();
@@ -119,15 +114,10 @@ namespace HexFluid
             for (int i = 0; i < root.childCount; i++)
             {
                 Transform child = root.GetChild(i);
-                HexCoord c = HexCoord.FromWorld(child.localPosition, hexSize);
-                if (!_tileByCoord.ContainsKey(c)) // first child wins; ignore stray overlays
-                {
-                    _tileByCoord[c] = child;
-                    _baseY[child] = child.localPosition.y;
-                }
+                HexCoord c = HexCoord.FromWorld(child.localPosition, hexSize); // uses X/Z only
+                if (!_tileByCoord.ContainsKey(c)) _tileByCoord[c] = child;     // first child wins
             }
 
-            // One-time hint if we found nothing useful, so setup problems are obvious.
             if (_tileByCoord.Count == 0 && !_warnedEmpty && Application.isPlaying)
             {
                 _warnedEmpty = true;
@@ -146,7 +136,6 @@ namespace HexFluid
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
             _boardT = board != null ? board : transform;
 
-            // Re-map if the grid was (re)generated after we last looked.
             Transform root = tilesParent != null ? tilesParent : (board != null ? board : transform);
             if (root != _mappedRoot || (root != null && root.childCount != _mappedChildCount))
                 RebuildTileMap();
@@ -165,7 +154,6 @@ namespace HexFluid
             }
         }
 
-        /// <summary>Raycasts the board plane and returns the hex under the mouse.</summary>
         public bool TryGetTileUnderMouse(out HexCoord tile)
         {
             tile = default;
@@ -189,16 +177,29 @@ namespace HexFluid
         {
             Transform hovered = null;
             if (hover) _tileByCoord.TryGetValue(tile, out hovered);
-            if (hovered != null) _animating.Add(hovered);
+
+            // Never touch a tile that's still dropping in.
+            if (hovered != null && IsDropping(hovered)) hovered = null;
+
+            if (hovered != null)
+            {
+                // Capture its resting height the first time we lift it (now that it's landed).
+                if (!_baseY.ContainsKey(hovered)) _baseY[hovered] = hovered.localPosition.y;
+                _animating.Add(hovered);
+            }
 
             if (_animating.Count == 0) return;
 
-            float t = 1f - Mathf.Exp(-liftSpeed * Time.deltaTime); // frame-rate independent ease
+            float t = 1f - Mathf.Exp(-liftSpeed * Time.deltaTime);
             var done = new List<Transform>();
 
             foreach (var tr in _animating)
             {
-                if (tr == null || !_baseY.TryGetValue(tr, out float baseY)) { done.Add(tr); continue; }
+                if (tr == null || IsDropping(tr) || !_baseY.TryGetValue(tr, out float baseY))
+                {
+                    done.Add(tr);
+                    continue;
+                }
 
                 float target = (tr == hovered) ? baseY + liftHeight : baseY;
                 Vector3 p = tr.localPosition;
@@ -215,19 +216,24 @@ namespace HexFluid
             foreach (var tr in done) _animating.Remove(tr);
         }
 
-        private void RestoreAllTiles()
+        /// <summary>Returns any tiles we lifted to their resting height (skips dropping ones).</summary>
+        private void RestoreLifted()
         {
-            foreach (var kv in _baseY)
+            foreach (var tr in _animating)
             {
-                if (kv.Key == null) continue;
-                Vector3 p = kv.Key.localPosition;
-                p.y = kv.Value;
-                kv.Key.localPosition = p;
+                if (tr == null || IsDropping(tr)) continue;
+                if (_baseY.TryGetValue(tr, out float y))
+                {
+                    Vector3 p = tr.localPosition;
+                    p.y = y;
+                    tr.localPosition = p;
+                }
             }
             _animating.Clear();
         }
 
-        /// <summary>Mouse position in screen pixels (old Input Manager or new Input System).</summary>
+        // ---- Input -------------------------------------------------------------
+
         private static Vector3 MousePosition()
         {
 #if ENABLE_INPUT_SYSTEM

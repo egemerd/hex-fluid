@@ -23,6 +23,22 @@ namespace HexFluid
         [Tooltip("Prefab shown on a flooded tile (e.g. a water plane). Optional.")]
         public GameObject waterOverlayPrefab;
 
+        [Header("Spawn animation")]
+        [Tooltip("Drop tiles in from above when the board builds (Play mode only).")]
+        public bool dropIn = true;
+
+        [Tooltip("How high above their final spot tiles start.")]
+        public float dropHeight = 12f;
+
+        [Tooltip("How long each tile takes to fall.")]
+        public float fallDuration = 0.5f;
+
+        [Tooltip("Max random delay before a tile starts falling (0 = all together).")]
+        public float maxStagger = 0.6f;
+
+        [Tooltip("Bounce on landing instead of a smooth stop.")]
+        public bool dropBounce = true;
+
         // coord -> spawned tile root
         private readonly Dictionary<HexCoord, GameObject> _tileObjects = new();
         // coord -> spawned water overlay (if any)
@@ -57,6 +73,14 @@ namespace HexFluid
                 go.name = $"Tile {tile.coord} [{tile.role}]";
                 go.transform.localPosition = tile.coord.ToWorld(level.hexSize);
                 _tileObjects[tile.coord] = go;
+
+                // Drop it in from above with a random delay (Play mode only).
+                if (dropIn && Application.isPlaying)
+                {
+                    Vector3 target = go.transform.localPosition;
+                    var anim = go.AddComponent<TileDropAnimator>();
+                    anim.Play(target, dropHeight, Random.Range(0f, maxStagger), fallDuration, dropBounce);
+                }
             }
 
             // Seed water at every source.
