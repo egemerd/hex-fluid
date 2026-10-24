@@ -47,6 +47,10 @@ namespace HexFluid
 
         public Color color = new Color(0.6f, 0.45f, 0.25f);
 
+        [Header("Audio")]
+        [Tooltip("Played when this item is placed. Empty = the placer's shared place sound.")]
+        public SoundSO placeSound;
+
         public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
 
         /// <summary>

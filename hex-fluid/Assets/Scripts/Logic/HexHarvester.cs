@@ -41,6 +41,10 @@ namespace HexFluid
         [Tooltip("Where harvested resources go. Empty = one is found/added on this object.")]
         public PlayerInventory inventory;
 
+        [Header("Audio")]
+        [Tooltip("Played when you click a resource tile and harvest it.")]
+        public SoundSO harvestSound;
+
         [Header("Board surface")]
         [Tooltip("Hex radius (center to corner). Taken from 'level' if assigned.")]
         public float hexSize = 1f;
@@ -162,6 +166,8 @@ namespace HexFluid
             inventory.Add(type, amount);
             _harvested.Add(c);
             HarvestCount++;
+
+            Sfx.PlayAt(harvestSound, _boardT.TransformPoint(c.ToWorld(hexSize)));
 
             Harvested?.Invoke(c, type, amount);
             Changed?.Invoke();

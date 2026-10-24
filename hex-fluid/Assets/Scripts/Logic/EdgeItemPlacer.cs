@@ -32,6 +32,10 @@ namespace HexFluid
         [Tooltip("Turn off while the water flows so the player only builds beforehand.")]
         public bool placementEnabled = true;
 
+        [Header("Audio")]
+        [Tooltip("Played when any item is placed on an edge. An item's own placeSound overrides it.")]
+        public SoundSO placeSound;
+
         /// <summary>The item currently armed for placing (set by the craft bar).</summary>
         public ItemDefinition Selected { get; private set; }
 
@@ -66,8 +70,11 @@ namespace HexFluid
             if (!PickEdge(out var a, out var b)) return;
             if (!items.CanPlaceEdge(a, b)) return;
 
-            if (items.PlaceEdge(def, a, b) != null)
-                crafting.Consume(def);
+            var placed = items.PlaceEdge(def, a, b);
+            if (placed == null) return;
+
+            crafting.Consume(def);
+            Sfx.PlayAt(def.placeSound != null ? def.placeSound : placeSound, placed.view.transform.position);
         }
 
         private void TryPickUpUnderMouse()

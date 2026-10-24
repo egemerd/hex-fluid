@@ -161,7 +161,8 @@ namespace HexFluid
                 return;
             }
 
-            while (list.Count < want) list.Add(SpawnOne(prefab)); // gained -> new drops fall in
+            SoundSO landSound = dropSet.GetLandSound(type);
+            while (list.Count < want) list.Add(SpawnOne(prefab, landSound)); // gained -> new drops fall in
         }
 
         private List<Placed> DropsOf(ResourceType type)
@@ -194,7 +195,7 @@ namespace HexFluid
 
         // ---- Spawning --------------------------------------------------------------
 
-        private Placed SpawnOne(GameObject prefab)
+        private Placed SpawnOne(GameObject prefab, SoundSO landSound)
         {
             EnsureRoot();
 
@@ -220,14 +221,14 @@ namespace HexFluid
                                    | RigidbodyConstraints.FreezeRotationY
                                    | RigidbodyConstraints.FreezeRotationZ;
 
-                if (settleAfterLanding) StartCoroutine(SettleAfterLanding(rb));
+                StartCoroutine(SettleAfterLanding(rb, landSound));
             }
 
             return new Placed { go = go, slot = slot };
         }
 
-        /// <summary>Waits for the drop to land, waits settleDelay, then eases it to a full stop.</summary>
-        private IEnumerator SettleAfterLanding(Rigidbody rb)
+        /// <summary>Waits for the drop to land, plays its landing sound, then (if on) eases it to a full stop.</summary>
+        private IEnumerator SettleAfterLanding(Rigidbody rb, SoundSO landSound)
         {
             var step = new WaitForFixedUpdate();
             Vector3 down = -table.up;
@@ -242,6 +243,9 @@ namespace HexFluid
                 if (peakFall > 0.5f && fall < peakFall * 0.5f) break;
                 yield return step;
             }
+
+            Sfx.PlayAt(landSound, rb.position);
+            if (!settleAfterLanding) yield break;
 
             for (float t = 0f; t < settleDelay; t += Time.fixedDeltaTime)
             {

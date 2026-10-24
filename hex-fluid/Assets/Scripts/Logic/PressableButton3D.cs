@@ -37,6 +37,10 @@ namespace HexFluid
         [Tooltip("Higher = snappier. ~10-18 feels good.")]
         public float speed = 14f;
 
+        [Header("Audio")]
+        [Tooltip("Played the moment the button is pressed down.")]
+        public SoundSO pressSound;
+
         [Header("On click")]
         [Tooltip("Printed to the Console on each click. Leave empty to print nothing.")]
         public string debugMessage = "Game started";
@@ -76,6 +80,7 @@ namespace HexFluid
             {
                 _pressedOnThis = true;
                 IsPressed = true;
+                Sfx.Play(pressSound);
             }
 
             if (LeftReleased())

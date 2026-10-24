@@ -39,6 +39,9 @@ namespace HexFluid
         [Tooltip("Bounce on landing instead of a smooth stop.")]
         public bool dropBounce = true;
 
+        [Tooltip("Played once when the board starts dropping in.")]
+        public SoundSO buildSound;
+
         // coord -> spawned tile root
         private readonly Dictionary<HexCoord, GameObject> _tileObjects = new();
         // coord -> spawned water overlay (if any)
@@ -61,6 +64,8 @@ namespace HexFluid
         {
             Clear();
             level.BuildLookups();
+
+            if (dropIn && Application.isPlaying) Sfx.Play(buildSound);
 
             foreach (var tile in level.tiles)
             {

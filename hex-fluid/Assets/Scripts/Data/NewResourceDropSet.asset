@@ -15,6 +15,9 @@ MonoBehaviour:
   drops:
   - resource: 1
     prefab: {fileID: 6499317132239409073, guid: aceeb0613f92a7440af0ffdf0de21690, type: 3}
+    landSound: {fileID: 11400000, guid: a1d33089771d4bd418a87ad60035a3c1, type: 2}
   - resource: 2
     prefab: {fileID: 3398823021373643589, guid: 061f71b5cd7fa2a49ac7e0b707bc21fc, type: 3}
+    landSound: {fileID: 11400000, guid: 7e2ec0decb06e234387977ba59290b48, type: 2}
   defaultPrefab: {fileID: 0}
+  defaultLandSound: {fileID: 0}
