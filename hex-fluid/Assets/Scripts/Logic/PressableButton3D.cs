@@ -73,7 +73,7 @@ namespace HexFluid
         {
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
 
-            IsHovered = RaycastHitsSelf();
+            IsHovered = !InputBlocker.Blocked && RaycastHitsSelf();   // a popup is open: can't be clicked through it
 
             // Press / release logic (classic button: down on press, click fires on release over it).
             if (LeftPressed() && IsHovered)

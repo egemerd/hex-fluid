@@ -173,7 +173,8 @@ namespace HexFluid
             if (root != _mappedRoot || (root != null && root.childCount != _mappedChildCount))
                 RebuildTileMap();
 
-            bool hover = TryGetTileUnderMouse(out var tile);
+            HexCoord tile = default;
+            bool hover = !InputBlocker.Blocked && TryGetTileUnderMouse(out tile);   // a popup is open: no hover
             HasHover = hover;
             HoveredTile = tile;
 

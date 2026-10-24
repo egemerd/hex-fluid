@@ -105,7 +105,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (!keyboardShortcuts || levels.Count == 0) return;
+            if (!keyboardShortcuts || levels.Count == 0 || InputBlocker.Blocked) return;
             if (RestartPressed()) RestartLevel();
             else if (FirstLevelPressed()) LoadLevel(0);
         }

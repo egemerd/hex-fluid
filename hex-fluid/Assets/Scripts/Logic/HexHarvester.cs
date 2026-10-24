@@ -205,7 +205,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (!harvestingActive) return;
+            if (!harvestingActive || InputBlocker.Blocked) return;
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
             _boardT = BoardT;
 

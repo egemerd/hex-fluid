@@ -68,7 +68,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (!placementEnabled || Level == null || items == null) return;
+            if (!placementEnabled || Level == null || items == null || InputBlocker.Blocked) return;
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
 
             if (LeftPressed()) TryPlaceUnderMouse();

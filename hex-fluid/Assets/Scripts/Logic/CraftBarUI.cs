@@ -33,6 +33,7 @@ namespace HexFluid
         private void OnGUI()
         {
             if (placer == null || crafting == null || placer.palette == null) return;
+            if (InputBlocker.Blocked) return;              // hidden while a popup (tutorial book) is open
             EnsureStyles();
 
             float x = screenOffset.x;
