@@ -6,14 +6,14 @@ namespace HexFluid
     /// <summary>
     /// Bridge — placed on an edge, carries water across it to the next hex even
     /// when that hex isn't downhill. Lets you route water where it couldn't flow
-    /// on its own. Default recipe: 2 Wood. (Set it on the asset.)
+    /// on its own. Default recipe: 2 Wood.
     ///
     /// Create via: Assets > Create > HexFluid > Items > Bridge.
     /// </summary>
     [CreateAssetMenu(fileName = "Bridge", menuName = "HexFluid/Items/Bridge", order = 11)]
     public class BridgeItem : ItemDefinition
     {
-        public override bool ForcesEdge(HexCoord from, HexCoord to) => true;
+        public override EdgeFlow GetEdgeFlow(HexCoord from, HexCoord to) => EdgeFlow.Force;
 
         private void Reset()
         {

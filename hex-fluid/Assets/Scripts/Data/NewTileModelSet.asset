@@ -17,5 +17,7 @@ MonoBehaviour:
     model: {fileID: 4732658959769448345, guid: 7868d3bb8705cb6428a98a17ca9f7b2b, type: 3}
   - resource: 2
     model: {fileID: 3524078323745012305, guid: 33c3da07914bd8845ac8cc26935fda1a, type: 3}
-  roleModels: []
+  roleModels:
+  - role: 3
+    model: {fileID: 4855322414083108259, guid: 5d1e710f351a0ac428b4b78662782f40, type: 3}
   defaultModel: {fileID: 4855322414083108259, guid: f1fe3e6027327774c9e628c430e4a11b, type: 3}

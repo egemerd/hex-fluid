@@ -141,24 +141,35 @@ namespace HexFluid
 
             foreach (var cur in _flooded)
             {
+                // First, does this tile have any bridge (Force) edges? If so, the
+                // water is funnelled: it goes ONLY through the bridge(s), and the
+                // tile's other directions are cut off.
+                List<HexCoord> bridged = null;
                 for (int d = 0; d < 6; d++)
                 {
                     var n = cur.Neighbor(d);
-                    if (_flooded.Contains(n)) continue;
-                    if (!Level.HasTile(n)) continue;                 // off-board
+                    if (items != null && items.GetEdgeFlow(cur, n) == EdgeFlow.Force)
+                    {
+                        if (bridged == null) bridged = new List<HexCoord>();
+                        bridged.Add(n);
+                    }
+                }
 
-                    // Item effects on this edge (each item decides its own behaviour).
-                    if (items != null && items.IsEdgeBlocked(cur, n)) continue;   // barricade blocks
-                    if (!Level.IsEdgeOpen(cur, n)) continue;                       // fixed map wall blocks
-
-                    bool forced = items != null && items.IsEdgeForced(cur, n);     // bridge carries water across
-                    if (!forced && !IsDownhill(cur, n)) continue;                  // otherwise, downhill only
-
-                    var td = Level.GetTile(n);
-                    if (td == null) continue;
-                    if (td.resource != ResourceType.None) continue;  // water can't enter resource tiles
-
-                    next.Add(n);
+                if (bridged != null)
+                {
+                    // Funnel: only the bridged edges, and they ignore the downhill rule.
+                    foreach (var n in bridged)
+                        Consider(cur, n, next, ignoreDownhill: true);
+                }
+                else
+                {
+                    // Normal spread: every downhill neighbour that isn't barricaded.
+                    for (int d = 0; d < 6; d++)
+                    {
+                        var n = cur.Neighbor(d);
+                        if (items != null && items.GetEdgeFlow(cur, n) == EdgeFlow.Block) continue;
+                        Consider(cur, n, next, ignoreDownhill: false);
+                    }
                 }
             }
 
@@ -168,6 +179,21 @@ namespace HexFluid
                 if (Level.GetTile(n).role == TileRole.City) cityHit = true;
             }
             return next.Count;
+        }
+
+        /// <summary>Adds 'n' to the flood set for this step if water may enter it from 'cur'.</summary>
+        private void Consider(HexCoord cur, HexCoord n, HashSet<HexCoord> next, bool ignoreDownhill)
+        {
+            if (_flooded.Contains(n)) return;
+            if (!Level.HasTile(n)) return;                           // off-board
+            if (!Level.IsEdgeOpen(cur, n)) return;                   // fixed map wall
+            if (!ignoreDownhill && !IsDownhill(cur, n)) return;      // normal downhill rule
+
+            var td = Level.GetTile(n);
+            if (td == null) return;
+            if (td.resource != ResourceType.None) return;            // water can't enter resource tiles
+
+            next.Add(n);
         }
 
         /// <summary>True if 'to' is further along the flow direction than 'from'.</summary>

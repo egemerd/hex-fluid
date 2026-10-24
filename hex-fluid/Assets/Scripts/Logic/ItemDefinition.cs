@@ -6,6 +6,17 @@ namespace HexFluid
 {
     public enum ItemPlacement { Edge, Tile }
 
+    /// <summary>
+    /// What an item does to water trying to cross the edge it sits on.
+    ///   Default = item has no opinion; the normal rules apply (downhill only).
+    ///   Block   = water cannot cross this edge at all.
+    ///   Force   = funnel: ALL of the tile's water goes through this edge (ignoring
+    ///             the downhill rule), and the tile's other directions are cut off.
+    /// Add new values here only for a genuinely new behaviour; existing items
+    /// keep working because they return what they always returned.
+    /// </summary>
+    public enum EdgeFlow { Default, Block, Force }
+
     [Serializable]
     public struct ResourceCost
     {
@@ -16,13 +27,10 @@ namespace HexFluid
     /// <summary>
     /// Base for every craftable, placeable item. Shared data (recipe, placement,
     /// model) lives here; each concrete item is its own small subclass that
-    /// overrides only the water hooks it cares about. Adding a new item = one new
-    /// subclass + one asset. Nothing else changes.
+    /// overrides ONE method — GetEdgeFlow — to say how it treats water.
     ///
-    /// Water hooks the simulation calls per edge:
-    ///   BlocksEdge  -> water cannot cross this edge (Barricade)
-    ///   ForcesEdge  -> water crosses even if the far tile isn't downhill (Bridge)
-    /// Add new virtuals here for future effects (one-way valves, tile effects...).
+    /// Adding a new item = one new subclass + one asset. The water never changes,
+    /// because it only ever asks GetEdgeFlow and does what the item says.
     /// </summary>
     public abstract class ItemDefinition : ScriptableObject
     {
@@ -41,12 +49,10 @@ namespace HexFluid
 
         public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
 
-        // ---- Water effect hooks: override per item ----
-
-        /// <summary>Water cannot cross an edge holding this item.</summary>
-        public virtual bool BlocksEdge(HexCoord from, HexCoord to) => false;
-
-        /// <summary>Water crosses this edge to the far tile even if it isn't downhill.</summary>
-        public virtual bool ForcesEdge(HexCoord from, HexCoord to) => false;
+        /// <summary>
+        /// How this item treats water crossing the edge it's on, from 'from' to 'to'.
+        /// Override this per item. Default = no effect.
+        /// </summary>
+        public virtual EdgeFlow GetEdgeFlow(HexCoord from, HexCoord to) => EdgeFlow.Default;
     }
 }

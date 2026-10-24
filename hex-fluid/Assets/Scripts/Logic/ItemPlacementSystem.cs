@@ -97,13 +97,17 @@ namespace HexFluid
             _edgeItems.Clear();
         }
 
-        // ---- Water queries (the only thing the simulation needs) --------------
+        // ---- Water query (the only thing the simulation needs) ----------------
 
-        public bool IsEdgeBlocked(HexCoord from, HexCoord to) =>
-            _edgeItems.TryGetValue(EdgeKey.Between(from, to), out var p) && p.def.BlocksEdge(from, to);
-
-        public bool IsEdgeForced(HexCoord from, HexCoord to) =>
-            _edgeItems.TryGetValue(EdgeKey.Between(from, to), out var p) && p.def.ForcesEdge(from, to);
+        /// <summary>
+        /// What the item on this edge (if any) does to water crossing it. The water
+        /// just asks this and obeys — it never knows about specific item types, so a
+        /// new item needs no changes here or in the simulation.
+        /// </summary>
+        public EdgeFlow GetEdgeFlow(HexCoord from, HexCoord to) =>
+            _edgeItems.TryGetValue(EdgeKey.Between(from, to), out var p)
+                ? p.def.GetEdgeFlow(from, to)
+                : EdgeFlow.Default;
 
         // ---- Visuals ----------------------------------------------------------
 
