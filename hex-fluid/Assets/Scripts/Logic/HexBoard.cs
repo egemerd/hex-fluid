@@ -11,10 +11,15 @@ namespace HexFluid
     ///
     /// Drop this on an empty GameObject, assign a LevelData, press Play.
     /// Call StepWater() each turn (from input, a button, or a tick).
+    ///
+    /// The board is the one owner of the current level: every other script reads
+    /// it from Level and listens to LevelLoaded to reset itself. Switch levels at
+    /// runtime with LoadLevel() (a LevelManager does this for you).
     /// </summary>
     public class HexBoard : MonoBehaviour
     {
         [Header("Level")]
+        [Tooltip("Level built on Start. A LevelManager sets this for you; switch at runtime with LoadLevel().")]
         public LevelData level;
 
         [Tooltip("Per-type models: each resource / role gets its own hex model. Optional.")]
@@ -58,21 +63,44 @@ namespace HexFluid
 
         public IReadOnlyCollection<HexCoord> FloodedTiles => _flooded;
 
+        /// <summary>
+        /// The level currently on the board. In Play mode this is a copy of 'level',
+        /// so barricades placed while playing never edit the asset. Null until built.
+        /// </summary>
+        public LevelData Level { get; private set; }
+
+        /// <summary>Fires after the board is (re)built from a level. Scripts reset their per-level state here.</summary>
+        public event System.Action<LevelData> LevelLoaded;
+
+        private bool _ownsLevel; // Level is a runtime copy we made (destroy it on unload)
+
         void Start()
         {
-            if (level != null) Build();
+            if (level != null && Level == null) Build();
+        }
+
+        /// <summary>Despawns the current level and builds the given one in its place.</summary>
+        public void LoadLevel(LevelData newLevel)
+        {
+            level = newLevel;
+            Build();
         }
 
         /// <summary>Clears and rebuilds the whole board from the level asset.</summary>
         public void Build()
         {
             Clear();
-            level.BuildLookups();
+            if (level == null) return;
+
+            _ownsLevel = Application.isPlaying;
+            Level = _ownsLevel ? Instantiate(level) : level;
+            Level.name = level.name;
+            Level.BuildLookups();
 
             if (dropIn && Application.isPlaying && buildSound != null)
                 StartCoroutine(PlayWhenLanding(buildSound, LandingTime() + buildSoundOffset));
 
-            foreach (var tile in level.tiles)
+            foreach (var tile in Level.tiles)
             {
                 var prefab = ResolveModel(tile);
                 GameObject go = prefab != null
@@ -81,7 +109,7 @@ namespace HexFluid
                 if (prefab == null) go.transform.SetParent(transform);
 
                 go.name = $"Tile {tile.coord} [{tile.role}]";
-                go.transform.localPosition = tile.coord.ToWorld(level.hexSize);
+                go.transform.localPosition = tile.coord.ToWorld(Level.hexSize);
                 _tileObjects[tile.coord] = go;
 
                 // Drop it in from above with a random delay (Play mode only).
@@ -95,7 +123,7 @@ namespace HexFluid
 
             // Seed water at every source.
             _flooded.Clear();
-            foreach (var src in level.TilesWithRole(TileRole.Source))
+            foreach (var src in Level.TilesWithRole(TileRole.Source))
             {
                 _flooded.Add(src.coord);
                 ShowWater(src.coord, true);
@@ -103,6 +131,8 @@ namespace HexFluid
 
             Won = Lost = false;
             EvaluateEndState();
+
+            LevelLoaded?.Invoke(Level);
         }
 
         /// <summary>
@@ -131,9 +161,9 @@ namespace HexFluid
         private GameObject ResolveModel(HexTileData tile)
         {
             // 1. Explicit per-tile override wins (for one-off special tiles).
-            if (tile.modelIndex >= 0 && tile.modelIndex < level.tileModels.Count
-                && level.tileModels[tile.modelIndex] != null)
-                return level.tileModels[tile.modelIndex];
+            if (tile.modelIndex >= 0 && tile.modelIndex < Level.tileModels.Count
+                && Level.tileModels[tile.modelIndex] != null)
+                return Level.tileModels[tile.modelIndex];
 
             // 2. By type, from the shared model set.
             if (modelSet != null)
@@ -143,7 +173,7 @@ namespace HexFluid
             }
 
             // 3. Fallback.
-            return level.defaultTileModel;
+            return Level.defaultTileModel;
         }
 
         public void Clear()
@@ -153,6 +183,10 @@ namespace HexFluid
             _tileObjects.Clear();
             _waterObjects.Clear();
             _flooded.Clear();
+
+            if (_ownsLevel && Level != null) DestroySafe(Level);
+            Level = null;
+            _ownsLevel = false;
         }
 
         /// <summary>
@@ -164,7 +198,7 @@ namespace HexFluid
         {
             if (Won || Lost) return;
 
-            for (int step = 0; step < Mathf.Max(1, level.waterStepsPerTurn); step++)
+            for (int step = 0; step < Mathf.Max(1, Level.waterStepsPerTurn); step++)
             {
                 var frontier = new List<HexCoord>(_flooded);
                 var newlyFlooded = new List<HexCoord>();
@@ -174,9 +208,9 @@ namespace HexFluid
                     for (int d = 0; d < 6; d++)
                     {
                         var n = cur.Neighbor(d);
-                        if (!level.HasTile(n)) continue;          // off-board
+                        if (!Level.HasTile(n)) continue;          // off-board
                         if (_flooded.Contains(n)) continue;        // already wet
-                        if (!level.IsEdgeOpen(cur, n)) continue;   // barricade/wall blocks
+                        if (!Level.IsEdgeOpen(cur, n)) continue;   // barricade/wall blocks
                         newlyFlooded.Add(n);
                     }
                 }
@@ -196,13 +230,13 @@ namespace HexFluid
         private void EvaluateEndState()
         {
             // Lose if any city is flooded.
-            foreach (var city in level.TilesWithRole(TileRole.City))
+            foreach (var city in Level.TilesWithRole(TileRole.City))
                 if (_flooded.Contains(city.coord)) { Lost = true; }
 
             // Win if every goal is flooded (and we haven't lost).
             bool allGoals = true;
             bool anyGoal = false;
-            foreach (var goal in level.TilesWithRole(TileRole.Goal))
+            foreach (var goal in Level.TilesWithRole(TileRole.Goal))
             {
                 anyGoal = true;
                 if (!_flooded.Contains(goal.coord)) allGoals = false;
@@ -215,14 +249,14 @@ namespace HexFluid
         /// <summary>Place a barricade on the edge between two tiles (consumes resources elsewhere).</summary>
         public void PlaceBarricade(HexCoord a, HexCoord b)
         {
-            if (level.GetEdge(a, b) == EdgeState.Wall) return; // can't build on map walls
-            level.SetEdge(a, b, EdgeState.Barricade);
+            if (Level.GetEdge(a, b) == EdgeState.Wall) return; // can't build on map walls
+            Level.SetEdge(a, b, EdgeState.Barricade);
         }
 
         public void RemoveBarricade(HexCoord a, HexCoord b)
         {
-            if (level.GetEdge(a, b) == EdgeState.Barricade)
-                level.SetEdge(a, b, EdgeState.Open);
+            if (Level.GetEdge(a, b) == EdgeState.Barricade)
+                Level.SetEdge(a, b, EdgeState.Open);
         }
 
         // ---- Visuals ----
@@ -234,7 +268,7 @@ namespace HexFluid
             {
                 if (_waterObjects.ContainsKey(c)) return;
                 var w = Instantiate(waterOverlayPrefab, transform);
-                w.transform.localPosition = c.ToWorld(level.hexSize, 0.05f);
+                w.transform.localPosition = c.ToWorld(Level.hexSize, 0.05f);
                 w.name = $"Water {c}";
                 _waterObjects[c] = w;
             }

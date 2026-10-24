@@ -117,7 +117,7 @@ namespace HexFluid
         [Tooltip("Local direction that counts as 'down' the board. Default -Z. Flip it if your source ends up at the bottom.")]
         public Vector3 flowDirection = new Vector3(0f, 0f, -1f);
 
-        [Tooltip("Start the moment Play begins (for testing). Normally the Start button calls StartSimulation().")]
+        [Tooltip("Start as soon as each level is built (for testing). Normally the Start button calls StartSimulation().")]
         public bool autoStart = false;
 
         public bool Running { get; private set; }
@@ -137,7 +137,7 @@ namespace HexFluid
         /// <summary>Fires whenever the flood moves to a new stage.</summary>
         public event Action<FloodStage> StageChanged;
 
-        private LevelData Level => board != null ? board.level : null;
+        private LevelData Level => board != null ? board.Level : null;
         private Transform Root => board != null ? board.transform : transform;
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
@@ -155,16 +155,43 @@ namespace HexFluid
         private Transform _waterRoot;
         private WaterBody _waterBody;
         private Coroutine _run;
+        private Coroutine _sourcesRun;
         private float _endTime;      // the result is decided here
         private float _visualEnd;    // the water has fully settled here (a little later)
+
+        private void OnEnable()
+        {
+            if (board != null) board.LevelLoaded += OnLevelLoaded;
+        }
+
+        private void OnDisable()
+        {
+            if (board != null) board.LevelLoaded -= OnLevelLoaded;
+        }
 
         private void Start()
         {
             SetWaterTime(0f);
             if (showStageBadge && FindFirstObjectByType<FloodStageBadge>() == null)
                 new GameObject("FloodStageBadge").AddComponent<FloodStageBadge>().simulation = this;
+        }
+
+        /// <summary>
+        /// A new level was built (the first one, or the next after a win): throw away
+        /// the old flood and start over on the fresh board.
+        /// </summary>
+        private void OnLevelLoaded(LevelData level)
+        {
+            StopSimulation();
+            if (_sourcesRun != null) StopCoroutine(_sourcesRun);
+            _sourcesRun = null;
+            ClearWater();
+            Won = Lost = false;
+            SetWaterTime(0f);
+            SetStage(FloodStage.Calm);
+
             if (autoStart) StartSimulation();
-            else if (floodSourcesOnLoad) StartCoroutine(FloodSourcesWhenBoardReady());
+            else if (floodSourcesOnLoad) _sourcesRun = StartCoroutine(FloodSourcesWhenBoardReady());
         }
 
         /// <summary>

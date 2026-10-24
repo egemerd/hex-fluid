@@ -62,5 +62,12 @@ namespace HexFluid
             _owned[def] = Owned(def) + count;
             Changed?.Invoke();
         }
+
+        /// <summary>Empty the whole stock (e.g. when a new level starts).</summary>
+        public void Clear()
+        {
+            _owned.Clear();
+            Changed?.Invoke();
+        }
     }
 }

@@ -16,8 +16,10 @@ namespace HexFluid
     ///
     /// Setup:
     ///   - Put this on your board object (or any object), press Play.
-    ///   - Assign 'level'. Assign 'board' = the transform your tiles are positioned
-    ///     under (empty = this object). It uses the same picking as HexTileHover.
+    ///   - The level comes from the HexBoard (found automatically). Assign 'board' =
+    ///     the transform your tiles are positioned under (empty = the HexBoard).
+    ///     It uses the same picking as HexTileHover.
+    ///   - Every time the board loads a level the harvest starts over.
     ///   - An inventory is created automatically if you don't assign one.
     ///
     /// Fits the build phase you'll add next:
@@ -30,9 +32,10 @@ namespace HexFluid
     public class HexHarvester : MonoBehaviour
     {
         [Header("References")]
-        public LevelData level;
+        [Tooltip("The board the level comes from. Empty = found on this object / in the scene.")]
+        public HexBoard hexBoard;
 
-        [Tooltip("Transform the tiles are positioned under (coordinate space). Empty = this object.")]
+        [Tooltip("Transform the tiles are positioned under (coordinate space). Empty = the HexBoard.")]
         public Transform board;
 
         [Tooltip("Camera used for picking. Empty = Camera.main.")]
@@ -46,7 +49,7 @@ namespace HexFluid
         public SoundSO harvestSound;
 
         [Header("Board surface")]
-        [Tooltip("Hex radius (center to corner). Taken from 'level' if assigned.")]
+        [Tooltip("Hex radius (center to corner). Taken from the board's level when it loads.")]
         public float hexSize = 1f;
 
         [Tooltip("Height of the tile tops in board space, used for the mouse plane.")]
@@ -80,11 +83,15 @@ namespace HexFluid
         private readonly HashSet<HexCoord> _harvested = new HashSet<HexCoord>();
         private bool _ended;
 
+        private LevelData Level => hexBoard != null ? hexBoard.Level : null;
+        private Transform BoardT => board != null ? board : (hexBoard != null ? hexBoard.transform : transform);
+
         private void Awake()
         {
-            _boardT = board != null ? board : transform;
+            if (hexBoard == null) hexBoard = GetComponent<HexBoard>();
+            if (hexBoard == null) hexBoard = FindFirstObjectByType<HexBoard>();
+            _boardT = BoardT;
             if (cam == null) cam = Camera.main;
-            if (level != null) hexSize = level.hexSize;
 
             if (inventory == null)
             {
@@ -95,17 +102,37 @@ namespace HexFluid
             CountResourceTiles();
         }
 
+        private void OnEnable()
+        {
+            if (hexBoard != null) hexBoard.LevelLoaded += OnLevelLoaded;
+        }
+
+        private void OnDisable()
+        {
+            if (hexBoard != null) hexBoard.LevelLoaded -= OnLevelLoaded;
+        }
+
         private void OnValidate()
         {
-            if (level != null) hexSize = level.hexSize;
+            if (hexBoard != null && hexBoard.level != null) hexSize = hexBoard.level.hexSize;
+        }
+
+        /// <summary>A new level is on the board: nothing harvested yet, start the phase over.</summary>
+        private void OnLevelLoaded(LevelData level)
+        {
+            hexSize = level.hexSize;
+            _harvested.Clear();
+            HarvestCount = 0;
+            CountResourceTiles();
+            BeginHarvesting();
         }
 
         /// <summary>Counts how many resource tiles the level has (for UI / completion).</summary>
         public void CountResourceTiles()
         {
             ResourceTileCount = 0;
-            if (level == null) return;
-            foreach (var t in level.tiles)
+            if (Level == null) return;
+            foreach (var t in Level.tiles)
                 if (t.resource != ResourceType.None) ResourceTileCount++;
         }
 
@@ -138,15 +165,15 @@ namespace HexFluid
             if (!harvestingActive) return false;
             if (maxHarvests > 0 && HarvestCount >= maxHarvests) return false;
             if (_harvested.Contains(c)) return false;
-            var t = level != null ? level.GetTile(c) : null;
+            var t = Level != null ? Level.GetTile(c) : null;
             return t != null && t.resource != ResourceType.None && t.resourceAmount > 0;
         }
 
         public bool IsHarvestComplete()
         {
             if (maxHarvests > 0 && HarvestCount >= maxHarvests) return true;
-            if (level == null || ResourceTileCount == 0) return false;
-            foreach (var t in level.tiles)
+            if (Level == null || ResourceTileCount == 0) return false;
+            foreach (var t in Level.tiles)
                 if (t.resource != ResourceType.None && !_harvested.Contains(t.coord))
                     return false;
             return true; // there were resource tiles and all are harvested
@@ -159,7 +186,7 @@ namespace HexFluid
         {
             if (!CanHarvest(c)) return false;
 
-            var t = level.GetTile(c);
+            var t = Level.GetTile(c);
             int amount = Mathf.Max(1, t.resourceAmount);
             ResourceType type = t.resource;
 
@@ -180,7 +207,7 @@ namespace HexFluid
         {
             if (!harvestingActive) return;
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
-            _boardT = board != null ? board : transform;
+            _boardT = BoardT;
 
             if (!LeftClicked()) return;
             if (TryPickTile(out var c)) TryHarvest(c);
@@ -198,7 +225,7 @@ namespace HexFluid
             Vector3 world = ray.GetPoint(enter);
             Vector3 local = _boardT.InverseTransformPoint(world);
             tile = HexCoord.FromWorld(local, hexSize);
-            return level == null || level.HasTile(tile);
+            return Level == null || Level.HasTile(tile);
         }
 
         // ---- Input (old Input Manager or new Input System) --------------------

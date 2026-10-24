@@ -18,16 +18,17 @@ namespace HexFluid
     ///
     /// Setup:
     ///   - Put this on your board GameObject and press Play.
-    ///   - Assign 'level'. Assign 'tilesParent' = the transform whose direct children
-    ///     are the tile objects (empty = 'board' / this object).
+    ///   - The level comes from the HexBoard (found automatically). Assign 'tilesParent'
+    ///     = the transform whose direct children are the tile objects (empty = 'board').
+    ///   - Remaps itself every time the board loads a level.
     /// </summary>
     public class HexTileHover : MonoBehaviour
     {
         [Header("References")]
-        [Tooltip("The level the board was built from (for hexSize + which tiles exist). Optional.")]
-        public LevelData level;
+        [Tooltip("The board the level comes from (for hexSize + which tiles exist). Empty = found on this object / in the scene.")]
+        public HexBoard hexBoard;
 
-        [Tooltip("The transform the tiles sit under for coordinate space. Empty = this object.")]
+        [Tooltip("The transform the tiles sit under for coordinate space. Empty = the HexBoard.")]
         public Transform board;
 
         [Tooltip("Parent whose direct children are the tile objects. Empty = 'board'.")]
@@ -37,7 +38,7 @@ namespace HexFluid
         public Camera cam;
 
         [Header("Board surface")]
-        [Tooltip("Hex radius (center to corner). Taken from 'level' if one is assigned.")]
+        [Tooltip("Hex radius (center to corner). Taken from the board's level when it loads.")]
         public float hexSize = 1f;
 
         [Tooltip("Height of the tile tops in board space, used for the mouse plane.")]
@@ -50,7 +51,7 @@ namespace HexFluid
         [Tooltip("Higher = snappier. ~8-15 feels good.")]
         public float liftSpeed = 12f;
 
-        [Tooltip("Only lift tiles that exist in 'level'. Off = lift wherever the mouse is on a tile.")]
+        [Tooltip("Only lift tiles that exist in the level. Off = lift wherever the mouse is on a tile.")]
         public bool requireExistingTile = true;
 
         /// <summary>True when the mouse is over a valid tile this frame.</summary>
@@ -74,19 +75,46 @@ namespace HexFluid
         private int _mappedChildCount = -1;
         private bool _warnedEmpty;
 
+        private LevelData Level => hexBoard != null ? hexBoard.Level : null;
+        private Transform BoardT => board != null ? board : (hexBoard != null ? hexBoard.transform : transform);
+        private Transform TilesRoot => tilesParent != null ? tilesParent : BoardT;
+
         private void Awake()
         {
-            _boardT = board != null ? board : transform;
+            if (hexBoard == null) hexBoard = GetComponent<HexBoard>();
+            if (hexBoard == null) hexBoard = FindFirstObjectByType<HexBoard>();
+            _boardT = BoardT;
             if (cam == null) cam = Camera.main;
-            if (level != null) hexSize = level.hexSize;
         }
 
-        private void OnEnable() => RebuildTileMap();
-        private void OnDisable() => RestoreLifted();
+        private void OnEnable()
+        {
+            if (hexBoard != null) hexBoard.LevelLoaded += OnLevelLoaded;
+            RebuildTileMap();
+        }
+
+        private void OnDisable()
+        {
+            if (hexBoard != null) hexBoard.LevelLoaded -= OnLevelLoaded;
+            RestoreLifted();
+        }
 
         private void OnValidate()
         {
-            if (level != null) hexSize = level.hexSize;
+            if (hexBoard != null && hexBoard.level != null) hexSize = hexBoard.level.hexSize;
+        }
+
+        /// <summary>
+        /// A new level is on the board. The old tiles are only destroyed at the end of
+        /// this frame, so don't map now: forget the old map and remap next Update.
+        /// </summary>
+        private void OnLevelLoaded(LevelData level)
+        {
+            hexSize = level.hexSize;
+            RestoreLifted();
+            _tileByCoord.Clear();
+            _baseY.Clear();
+            _mappedRoot = null;
         }
 
         /// <summary>
@@ -108,7 +136,7 @@ namespace HexFluid
             _baseY.Clear();
             _animating.Clear();
 
-            Transform root = tilesParent != null ? tilesParent : (board != null ? board : transform);
+            Transform root = TilesRoot;
             if (root == null) return;
 
             _mappedRoot = root;
@@ -137,9 +165,9 @@ namespace HexFluid
         private void Update()
         {
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
-            _boardT = board != null ? board : transform;
+            _boardT = BoardT;
 
-            Transform root = tilesParent != null ? tilesParent : (board != null ? board : transform);
+            Transform root = TilesRoot;
             if (root != _mappedRoot || (root != null && root.childCount != _mappedChildCount))
                 RebuildTileMap();
 
@@ -170,7 +198,7 @@ namespace HexFluid
             Vector3 local = _boardT.InverseTransformPoint(world);
             tile = HexCoord.FromWorld(local, hexSize);
 
-            if (requireExistingTile && level != null && !level.HasTile(tile)) return false;
+            if (requireExistingTile && Level != null && !Level.HasTile(tile)) return false;
             return true;
         }
 

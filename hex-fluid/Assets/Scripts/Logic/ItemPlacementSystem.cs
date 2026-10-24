@@ -31,7 +31,7 @@ namespace HexFluid
         private readonly Dictionary<EdgeKey, PlacedItem> _edgeItems = new Dictionary<EdgeKey, PlacedItem>();
         private Transform _root;
 
-        private LevelData Level => board != null ? board.level : null;
+        private LevelData Level => board != null ? board.Level : null;
         private Transform BoardT => board != null ? board.transform : transform;
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
@@ -42,6 +42,19 @@ namespace HexFluid
             if (board == null) board = GetComponent<HexBoard>();
             EnsureRoot();
         }
+
+        private void OnEnable()
+        {
+            if (board != null) board.LevelLoaded += OnLevelLoaded;
+        }
+
+        private void OnDisable()
+        {
+            if (board != null) board.LevelLoaded -= OnLevelLoaded;
+        }
+
+        // A new level starts empty: the old level's items go with it.
+        private void OnLevelLoaded(LevelData level) => ClearAll();
 
         private void EnsureRoot()
         {

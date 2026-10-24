@@ -39,7 +39,7 @@ namespace HexFluid
         /// <summary>The item currently armed for placing (set by the craft bar).</summary>
         public ItemDefinition Selected { get; private set; }
 
-        private LevelData Level => board != null ? board.level : null;
+        private LevelData Level => board != null ? board.Level : null;
         private Transform BoardT => board != null ? board.transform : transform;
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
