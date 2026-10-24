@@ -36,6 +36,19 @@ namespace HexFluid
         [Tooltip("Played when any item is placed on an edge. An item's own placeSound overrides it.")]
         public SoundSO placeSound;
 
+        [Tooltip("Played when you try to build somewhere the rules forbid (e.g. next to the water source). Optional.")]
+        public SoundSO deniedSound;
+
+        [Header("Denied placement")]
+        [Tooltip("Camera to shake when a placement is refused. Empty = 'cam' (a CameraShake is added to it).")]
+        public CameraShake cameraShake;
+
+        [Tooltip("Seconds the screen shakes when you try to build where you can't.")]
+        [Min(0f)] public float deniedShakeDuration = 0.25f;
+
+        [Tooltip("How far the camera moves on a refused placement, in world units. 0 = off.")]
+        [Min(0f)] public float deniedShakeStrength = 0.15f;
+
         /// <summary>The item currently armed for placing (set by the craft bar).</summary>
         public ItemDefinition Selected { get; private set; }
 
@@ -68,6 +81,7 @@ namespace HexFluid
             if (def == null) return;
             if (crafting == null || crafting.Owned(def) <= 0) return;   // nothing made to place
             if (!PickEdge(out var a, out var b)) return;
+            if (items.IsEdgeForbidden(a, b)) { Deny(a, b); return; }
             if (!items.CanPlaceEdge(a, b)) return;
 
             var placed = items.PlaceEdge(def, a, b);
@@ -75,6 +89,21 @@ namespace HexFluid
 
             crafting.Consume(def);
             Sfx.PlayAt(def.placeSound != null ? def.placeSound : placeSound, placed.view.transform.position);
+        }
+
+        /// <summary>The rules say no building on this edge: shake the screen so the player feels it.</summary>
+        private void Deny(HexCoord a, HexCoord b)
+        {
+            Sfx.PlayAt(deniedSound, BoardT.TransformPoint((a.ToWorld(HexSize) + b.ToWorld(HexSize)) * 0.5f));
+
+            if (deniedShakeStrength <= 0f) return;
+            if (cameraShake == null)
+            {
+                if (cam == null) return;
+                cameraShake = cam.GetComponent<CameraShake>();
+                if (cameraShake == null) cameraShake = cam.gameObject.AddComponent<CameraShake>();
+            }
+            cameraShake.Shake(deniedShakeDuration, deniedShakeStrength);
         }
 
         private void TryPickUpUnderMouse()

@@ -28,6 +28,10 @@ namespace HexFluid
         [Tooltip("How high above the tiles items sit.")]
         public float itemYOffset = 0.1f;
 
+        [Header("Rules")]
+        [Tooltip("No building on any edge of a Source tile: the water's starting point can't be walled in.")]
+        public bool blockAroundSources = true;
+
         private readonly Dictionary<EdgeKey, PlacedItem> _edgeItems = new Dictionary<EdgeKey, PlacedItem>();
         private Transform _root;
 
@@ -87,7 +91,21 @@ namespace HexFluid
             if (Level == null) return false;
             if (!Level.HasTile(a) || !Level.HasTile(b)) return false;
             if (a.DistanceTo(b) != 1) return false;              // must be adjacent
+            if (IsEdgeForbidden(a, b)) return false;             // a rule says no building here
             return !_edgeItems.ContainsKey(EdgeKey.Between(a, b)); // one item per edge
+        }
+
+        /// <summary>
+        /// True if the rules forbid building on this edge at all (not just "taken"):
+        /// it touches a Source tile, where the water starts.
+        /// </summary>
+        public bool IsEdgeForbidden(HexCoord a, HexCoord b) =>
+            blockAroundSources && Level != null && (IsSource(a) || IsSource(b));
+
+        private bool IsSource(HexCoord c)
+        {
+            var t = Level.GetTile(c);
+            return t != null && t.role == TileRole.Source;
         }
 
         public PlacedItem PlaceEdge(ItemDefinition def, HexCoord a, HexCoord b)
