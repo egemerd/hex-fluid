@@ -5,10 +5,12 @@ using UnityEngine;
 namespace HexFluid
 {
     /// <summary>
-    /// When you harvest a resource, drops its prefab straight down onto a table at a
-    /// random spot inside a chosen area, with no overlap between drops. Which prefab
-    /// falls comes from a ResourceDropSet, so a new resource just needs a row there —
-    /// this script never changes.
+    /// Shows the PlayerInventory as physical drops on a table. It only listens to
+    /// inventory.Changed and keeps the number of drops per resource equal to what you
+    /// hold: gain wood -> logs fall onto the table, spend wood (crafting, or anything
+    /// else) -> that many logs shrink away. Harvesting, crafting and any future system
+    /// never need to know this script exists. Which prefab falls comes from a
+    /// ResourceDropSet, so a new resource just needs a row there.
     ///
     /// Setup:
     ///   - Put this on your board object (or any object).
@@ -19,7 +21,8 @@ namespace HexFluid
     public class ResourceDropSpawner : MonoBehaviour
     {
         [Header("References (auto-found if empty)")]
-        public HexHarvester harvester;
+        [Tooltip("The inventory these drops show. Empty = the scene's PlayerInventory.")]
+        public PlayerInventory inventory;
         public ResourceDropSet dropSet;
 
         [Tooltip("Surface the drops land on. Needs a Collider. Empty = this object.")]
@@ -66,41 +69,87 @@ namespace HexFluid
         [Min(0f)] public float settleDuration = 0.3f;
 
         [Header("Amount")]
-        [Tooltip("One drop per unit of the resource. Off = one drop per harvest.")]
-        public bool oneDropPerUnit = true;
+        [Tooltip("How many units of a resource one drop stands for. 1 = one drop per unit.")]
+        [Min(1)] public int unitsPerDrop = 1;
 
-        [Min(1)] public int maxDropsPerHarvest = 12;
+        [Tooltip("Most drops shown per resource, so a huge stock doesn't flood the table.")]
+        [Min(1)] public int maxDropsPerResource = 30;
+
+        [Header("Remove")]
+        [Tooltip("Seconds a spent drop takes to shrink away. 0 = vanish instantly.")]
+        [Min(0f)] public float vanishDuration = 0.25f;
 
         [Header("Housekeeping")]
-        [Min(1)] public int maxDropsAlive = 80;
-
         [Tooltip("Add a Collider + Rigidbody to a prefab that has none.")]
         public bool ensurePhysics = true;
 
         private struct Placed { public GameObject go; public Vector3 slot; }
 
         private Transform _root;
-        private readonly Queue<Placed> _alive = new Queue<Placed>();
+        private readonly Dictionary<ResourceType, List<Placed>> _drops = new Dictionary<ResourceType, List<Placed>>();
+        private readonly List<ResourceType> _types = new List<ResourceType>();
         private bool _warned;
 
         private void Awake()
         {
-            if (harvester == null) harvester = FindObjectOfType<HexHarvester>();
+            if (inventory == null) inventory = FindObjectOfType<PlayerInventory>();
             if (table == null) table = transform;
         }
 
         private void OnEnable()
         {
-            if (harvester != null) harvester.Harvested += OnHarvested;
+            if (inventory == null) return;
+            inventory.Changed += Sync;
+            Sync();
+        }
+
+        private void Start()
+        {
+            // The harvester may only create its inventory in its own Awake — pick it up late.
+            if (inventory != null) return;
+            var harvester = FindObjectOfType<HexHarvester>();
+            inventory = harvester != null ? harvester.inventory : FindObjectOfType<PlayerInventory>();
+            if (inventory == null) return;
+            inventory.Changed += Sync;
+            Sync();
         }
 
         private void OnDisable()
         {
-            if (harvester != null) harvester.Harvested -= OnHarvested;
+            if (inventory != null) inventory.Changed -= Sync;
         }
 
-        private void OnHarvested(HexCoord coord, ResourceType type, int amount)
+        // ---- Mirror the inventory ------------------------------------------------
+
+        /// <summary>Spawns or removes drops so each resource shows what you hold.</summary>
+        public void Sync()
         {
+            if (inventory == null) return;
+
+            _types.Clear();
+            foreach (var kv in inventory.Amounts) _types.Add(kv.Key);
+            foreach (var kv in _drops) if (!_types.Contains(kv.Key)) _types.Add(kv.Key);
+
+            foreach (var type in _types) SyncType(type, inventory.Get(type));
+        }
+
+        private void SyncType(ResourceType type, int amount)
+        {
+            if (type == ResourceType.None) return;
+
+            int want = Mathf.Min(Mathf.CeilToInt(Mathf.Max(0, amount) / (float)unitsPerDrop), maxDropsPerResource);
+            List<Placed> list = DropsOf(type);
+
+            while (list.Count > want)                            // spent -> newest drops go first
+            {
+                int last = list.Count - 1;
+                GameObject go = list[last].go;
+                list.RemoveAt(last);
+                if (go) StartCoroutine(Vanish(go));
+            }
+
+            if (list.Count >= want) return;
+
             GameObject prefab = dropSet != null ? dropSet.GetPrefab(type) : null;
             if (prefab == null)
             {
@@ -112,11 +161,40 @@ namespace HexFluid
                 return;
             }
 
-            int count = oneDropPerUnit ? Mathf.Clamp(amount, 1, maxDropsPerHarvest) : 1;
-            for (int i = 0; i < count; i++) SpawnOne(prefab);
+            while (list.Count < want) list.Add(SpawnOne(prefab)); // gained -> new drops fall in
         }
 
-        private void SpawnOne(GameObject prefab)
+        private List<Placed> DropsOf(ResourceType type)
+        {
+            if (!_drops.TryGetValue(type, out var list))
+            {
+                list = new List<Placed>();
+                _drops[type] = list;
+            }
+            return list;
+        }
+
+        /// <summary>Shrinks a spent drop to nothing, then destroys it.</summary>
+        private IEnumerator Vanish(GameObject go)
+        {
+            foreach (var c in go.GetComponentsInChildren<Collider>()) c.enabled = false;
+            Rigidbody rb = go.GetComponent<Rigidbody>();
+            if (rb != null) rb.isKinematic = true;               // also ends its settle coroutine
+
+            Vector3 s0 = go.transform.localScale;
+            for (float t = 0f; t < vanishDuration; t += Time.deltaTime)
+            {
+                if (go == null) yield break;
+                go.transform.localScale = s0 * (1f - Mathf.SmoothStep(0f, 1f, t / vanishDuration));
+                yield return null;
+            }
+
+            if (go != null) Destroy(go);
+        }
+
+        // ---- Spawning --------------------------------------------------------------
+
+        private Placed SpawnOne(GameObject prefab)
         {
             EnsureRoot();
 
@@ -145,7 +223,7 @@ namespace HexFluid
                 if (settleAfterLanding) StartCoroutine(SettleAfterLanding(rb));
             }
 
-            Track(go, slot);
+            return new Placed { go = go, slot = slot };
         }
 
         /// <summary>Waits for the drop to land, waits settleDelay, then eases it to a full stop.</summary>
@@ -158,7 +236,7 @@ namespace HexFluid
             float peakFall = 0f;
             while (true)
             {
-                if (rb == null) yield break;
+                if (rb == null || rb.isKinematic) yield break;
                 float fall = Vector3.Dot(rb.linearVelocity, down);
                 if (fall > peakFall) peakFall = fall;
                 if (peakFall > 0.5f && fall < peakFall * 0.5f) break;
@@ -167,24 +245,24 @@ namespace HexFluid
 
             for (float t = 0f; t < settleDelay; t += Time.fixedDeltaTime)
             {
-                if (rb == null) yield break;
+                if (rb == null || rb.isKinematic) yield break;
                 yield return step;
             }
 
             // Ease velocity down to zero over settleDuration.
-            if (rb == null) yield break;
+            if (rb == null || rb.isKinematic) yield break;
             Vector3 v0 = rb.linearVelocity;
             Vector3 w0 = rb.angularVelocity;
             for (float t = 0f; t < settleDuration; t += Time.fixedDeltaTime)
             {
-                if (rb == null) yield break;
+                if (rb == null || rb.isKinematic) yield break;
                 float k = 1f - Mathf.SmoothStep(0f, 1f, t / settleDuration);
                 rb.linearVelocity = v0 * k;
                 rb.angularVelocity = w0 * k;
                 yield return step;
             }
 
-            if (rb == null) yield break;
+            if (rb == null || rb.isKinematic) yield break;
             rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.isKinematic = true;                               // fully stopped, stays put
@@ -211,7 +289,8 @@ namespace HexFluid
         private float MinDistanceToExisting(Vector3 cand)
         {
             float min = float.MaxValue;
-            foreach (var p in _alive)
+            foreach (var list in _drops.Values)
+            foreach (var p in list)
             {
                 float dx = p.slot.x - cand.x;
                 float dz = p.slot.z - cand.z;
@@ -235,30 +314,22 @@ namespace HexFluid
             return table.rotation * tilt * spin * prefab.transform.rotation;
         }
 
-        private void Track(GameObject go, Vector3 slot)
-        {
-            _alive.Enqueue(new Placed { go = go, slot = slot });
-            while (_alive.Count > maxDropsAlive)
-            {
-                var old = _alive.Dequeue();
-                if (old.go) Destroy(old.go);
-            }
-        }
-
         private void EnsureRoot()
         {
             if (_root != null) return;
             _root = new GameObject("ResourceDrops").transform;
         }
 
-        /// <summary>Clears every dropped object (e.g. between levels).</summary>
+        /// <summary>
+        /// Instantly removes every drop (e.g. between levels). The next inventory change
+        /// re-syncs, so clear the inventory too if you want the table to stay empty.
+        /// </summary>
         public void ClearAll()
         {
-            while (_alive.Count > 0)
-            {
-                var p = _alive.Dequeue();
-                if (p.go) Destroy(p.go);
-            }
+            foreach (var list in _drops.Values)
+                foreach (var p in list)
+                    if (p.go) Destroy(p.go);
+            _drops.Clear();
         }
     }
 }
