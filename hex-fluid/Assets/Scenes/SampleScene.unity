@@ -1101,6 +1101,13 @@ MonoBehaviour:
   harvester: {fileID: 0}
   tilesParent: {fileID: 0}
   mode: 2
+  hitStopDuration: 0.08
+  hitStopTimeScale: 0
+  cameraShake: {fileID: 0}
+  cameraShakeDuration: 0.2
+  cameraShakeStrength: 0.12
+  tileShakeDuration: 0.25
+  tileShakeStrength: 0.08
 --- !u!114 &731516372
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexFluid.TileModelSet
   resourceModels:
   - resource: 1
-    model: {fileID: 4732658959769448345, guid: 7868d3bb8705cb6428a98a17ca9f7b2b, type: 3}
+    model: {fileID: 6237145394303855514, guid: efccd78c87fc730489b59c844e4f189c, type: 3}
   - resource: 2
     model: {fileID: 1300921400214708418, guid: ceb60067c5c7b0b46b311276424b5539, type: 3}
   roleModels:
