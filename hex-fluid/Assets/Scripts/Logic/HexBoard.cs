@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,8 +40,11 @@ namespace HexFluid
         [Tooltip("Bounce on landing instead of a smooth stop.")]
         public bool dropBounce = true;
 
-        [Tooltip("Played once when the board starts dropping in.")]
+        [Tooltip("Played once as the dropping board lands.")]
         public SoundSO buildSound;
+
+        [Tooltip("Extra seconds to shift the sound by (negative = earlier, e.g. if the clip has a slow start).")]
+        public float buildSoundOffset = 0f;
 
         // coord -> spawned tile root
         private readonly Dictionary<HexCoord, GameObject> _tileObjects = new();
@@ -65,7 +69,8 @@ namespace HexFluid
             Clear();
             level.BuildLookups();
 
-            if (dropIn && Application.isPlaying) Sfx.Play(buildSound);
+            if (dropIn && Application.isPlaying && buildSound != null)
+                StartCoroutine(PlayWhenLanding(buildSound, LandingTime() + buildSoundOffset));
 
             foreach (var tile in level.tiles)
             {
@@ -98,6 +103,23 @@ namespace HexFluid
 
             Won = Lost = false;
             EvaluateEndState();
+        }
+
+        /// <summary>
+        /// Seconds after the drop starts until the board hits the table: the average
+        /// tile's stagger plus its fall (with a bounce, the first touch down comes at
+        /// about 36% of the fall).
+        /// </summary>
+        private float LandingTime()
+        {
+            float fall = Mathf.Max(0.01f, fallDuration) * (dropBounce ? 1f / 2.75f : 1f);
+            return Mathf.Max(0f, maxStagger) * 0.5f + fall;
+        }
+
+        private IEnumerator PlayWhenLanding(SoundSO sound, float delay)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+            Sfx.Play(sound);
         }
 
         /// <summary>

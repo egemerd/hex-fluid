@@ -6,8 +6,7 @@ using UnityEngine;
 namespace HexFluid
 {
     /// <summary>
-    /// The water flow. Starts at Source tiles, spreads DOWNWARD only, one ring every
-    /// 'stepInterval' seconds, and shows a blue plane above each flooded tile.
+    /// The water flow. Starts at Source tiles and spreads DOWNWARD only.
     ///
     /// Rules (all enforced here):
     ///   - Water starts at every Source tile.
@@ -17,37 +16,102 @@ namespace HexFluid
     ///     only pushes water AWAY from the side it arrived on, never back over itself.
     ///     A fixed map wall always blocks (see ItemPlacementSystem).
     ///   - It can't enter a resource tile.
-    ///   - Entering a City (house) = LOSE, immediately.
+    ///   - Entering a City (house) = LOSE.
     ///   - Water keeps spreading until no tile can take more; if no city got flooded = WIN.
+    ///
+    /// How it plays: StartSimulation() works the whole flood out up front with the
+    /// rules above (which tile gets water on which step, and from where), then plays
+    /// it back on one continuous clock, WaterTime, measured in tiles. The water
+    /// front sweeps smoothly across the board like a baked fluid simulation instead
+    /// of jumping one ring of tiles at a time. LOSE fires when the visible water
+    /// reaches a city; WIN when it has settled.
+    ///
+    /// Look: every tile the water will reach gets a FloodedTile, which sinks it just
+    /// ahead of the front. The water is one continuous 3D surface (WaterBody) over the
+    /// whole flood; its shader reveals it per pixel from the shared clock, so the
+    /// flood reads as one body.
+    ///
+    /// Stage: the flood moves through FloodStage (Cloudburst -> Flooding ->
+    /// Contained / CityFlooded) and announces each change on StageChanged. A
+    /// FloodStageBadge in the screen corner shows it; one is created automatically
+    /// if the scene has none.
     ///
     /// Setup:
     ///   - Put this on your board object (or any object) and assign 'board' (your HexBoard).
-    ///   - Call StartSimulation() to begin — wire your Start button's onClick to it.
+    ///   - Call StartSimulation() to begin â€” wire your Start button's onClick to it.
     ///     (Turn on 'autoStart' to test without the button.)
     /// </summary>
+    /// <summary>Where the flood is at, for HUD / sound / anything that wants to react.</summary>
+    public enum FloodStage
+    {
+        Calm,           // nothing yet (the board is still landing)
+        Cloudburst,     // the source has burst: water is welling up, waiting for Start
+        Flooding,       // the water is running across the board
+        Contained,      // settled without reaching a city: WIN
+        CityFlooded,    // the water reached a city: LOSE
+    }
+
     public class WaterSimulation : MonoBehaviour
     {
+        /// <summary>Shader global holding WaterTime, read by FlowingWater.shader.</summary>
+        public static readonly int WaterTimeId = Shader.PropertyToID("_HexWaterTime");
+
+        /// <summary>Arrival time used for sources: wet long before the clock starts.</summary>
+        public const float AlwaysWet = -10f;
+
         [Header("References")]
-        [Tooltip("Your HexBoard — provides the level, hexSize, and coordinate space.")]
+        [Tooltip("Your HexBoard â€” provides the level, hexSize, and coordinate space.")]
         public HexBoard board;
 
         [Tooltip("Placed items (barricades/bridges). Auto-found if empty. Optional.")]
         public ItemPlacementSystem items;
 
-        [Header("Water visual")]
-        [Tooltip("Optional custom water prefab. Empty = a generated blue plane.")]
+        [Header("Stage badge")]
+        [Tooltip("Show the flood stage (Cloudburst, Flooding commenced...) as a wobbling sticker in a screen corner. Created automatically if the scene has no FloodStageBadge.")]
+        public bool showStageBadge = true;
+
+        [Header("Per-tile indicator (old)")]
+        [Tooltip("Also mark each tile the water reaches with the prefab / blue plane below. Off by default: the stage badge replaces it.")]
+        public bool showTileIndicators = false;
+
+        [Tooltip("Per-tile indicator prefab. Empty = a generated blue plane.")]
         public GameObject waterPlanePrefab;
 
-        [Tooltip("How high above the tiles the water sits.")]
+        [Tooltip("How high above the tiles the per-tile indicator sits.")]
         public float waterYOffset = 2f;
 
         public Color waterColor = new Color(0.2f, 0.5f, 1f, 1f);
 
-        [Tooltip("Water plane size as a multiple of hexSize.")]
+        [Tooltip("Blue plane size as a multiple of hexSize.")]
         public float planeSizeFactor = 1.8f;
 
+        [Header("Flooded tiles")]
+        [Tooltip("Sink flooded tiles and show flowing water on them.")]
+        public bool floodVisuals = true;
+
+        [Tooltip("Flowing water material. Empty = Resources/FlowingWater.")]
+        public Material flowMaterial;
+
+        [Tooltip("How far a flooded tile sinks (board units). More = deeper, bluer water over it.")]
+        public float sinkDepth = 0.22f;
+
+        [Tooltip("Seconds a tile takes to sink. It finishes just as the water front reaches it.")]
+        [Min(0.01f)] public float sinkDuration = 0.4f;
+
+        [Tooltip("ON = measure the tile model and put the water just below the top of the unsunk tiles around it. OFF = use Flow Surface Height.")]
+        public bool autoSurfaceHeight = true;
+
+        [Tooltip("Auto mode: how far below the unsunk tile tops the water surface sits.")]
+        public float waterBelowGround = 0.04f;
+
+        [Tooltip("Manual mode: height of the water above a sunk tile's pivot (board units).")]
+        public float flowSurfaceHeight = 0.12f;
+
+        [Tooltip("Show source tiles already flooded (sunk, with water) as soon as the board lands.")]
+        public bool floodSourcesOnLoad = true;
+
         [Header("Flow")]
-        [Tooltip("Seconds between each water step.")]
+        [Tooltip("Seconds the water front takes to advance one tile.")]
         [Min(0.05f)] public float stepInterval = 1.2f;
 
         [Tooltip("Local direction that counts as 'down' the board. Default -Z. Flip it if your source ends up at the bottom.")]
@@ -60,26 +124,85 @@ namespace HexFluid
         public bool Won { get; private set; }
         public bool Lost { get; private set; }
 
+        /// <summary>The playback clock, in tiles: water reaches a tile's centre at its arrival step.</summary>
+        public float WaterTime { get; private set; }
+
+        /// <summary>Where the flood is at right now.</summary>
+        public FloodStage Stage { get; private set; } = FloodStage.Calm;
+
         /// <summary>Fires once when the player wins.</summary>
         public event Action WonEvent;
         /// <summary>Fires once when the player loses.</summary>
         public event Action LostEvent;
+        /// <summary>Fires whenever the flood moves to a new stage.</summary>
+        public event Action<FloodStage> StageChanged;
 
         private LevelData Level => board != null ? board.level : null;
         private Transform Root => board != null ? board.transform : transform;
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
+        // The planned flood: every tile the water will reach, and on which step.
         private readonly HashSet<HexCoord> _flooded = new HashSet<HexCoord>();
-
+        private readonly Dictionary<HexCoord, int> _arrival = new Dictionary<HexCoord, int>();
         // For each flooded tile, the neighbours its water came in from.
         private readonly Dictionary<HexCoord, HashSet<HexCoord>> _cameFrom = new Dictionary<HexCoord, HashSet<HexCoord>>();
+        // Tiles the visible water has actually reached so far.
+        private readonly HashSet<HexCoord> _reached = new HashSet<HexCoord>();
+
         private readonly Dictionary<HexCoord, GameObject> _waterViews = new Dictionary<HexCoord, GameObject>();
+        private readonly Dictionary<HexCoord, FloodedTile> _tileViews = new Dictionary<HexCoord, FloodedTile>();
+        private readonly Dictionary<Mesh, float> _meshTop = new Dictionary<Mesh, float>();
         private Transform _waterRoot;
+        private WaterBody _waterBody;
         private Coroutine _run;
+        private float _endTime;      // the result is decided here
+        private float _visualEnd;    // the water has fully settled here (a little later)
 
         private void Start()
         {
+            SetWaterTime(0f);
+            if (showStageBadge && FindFirstObjectByType<FloodStageBadge>() == null)
+                new GameObject("FloodStageBadge").AddComponent<FloodStageBadge>().simulation = this;
             if (autoStart) StartSimulation();
+            else if (floodSourcesOnLoad) StartCoroutine(FloodSourcesWhenBoardReady());
+        }
+
+        /// <summary>
+        /// Waits for HexBoard to spawn the source tiles AND for them to finish dropping
+        /// in, then shows them flooded, so the water never hangs over an empty table.
+        /// </summary>
+        private IEnumerator FloodSourcesWhenBoardReady()
+        {
+            if (Level == null || board == null) yield break;
+
+            float giveUp = Time.time + 10f;
+            while (!Running && !SourcesLanded() && Time.time < giveUp) yield return null;
+            if (Running || !SourcesLanded()) yield break;       // the simulation got there first
+
+            ClearWater();
+            Level.BuildLookups();
+            SeedSources();
+            CreateWaterRoot();
+            SpawnPlannedViews();
+            SetStage(FloodStage.Cloudburst);
+        }
+
+        /// <summary>Every source tile exists and has finished its drop-in animation.</summary>
+        private bool SourcesLanded()
+        {
+            foreach (var t in Level.tiles)
+            {
+                if (t.role != TileRole.Source) continue;
+                var tile = board.GetTileObject(t.coord);
+                if (tile == null || tile.GetComponent<TileDropAnimator>() != null) return false;
+            }
+            return true;
+        }
+
+        private void CreateWaterRoot()
+        {
+            _waterRoot = new GameObject("WaterSim").transform;
+            _waterRoot.SetParent(Root, false);
         }
 
         // =====================================================================
@@ -98,20 +221,21 @@ namespace HexFluid
             StopSimulation();
             ClearWater();
             Level.BuildLookups();
-            if (items == null) items = FindObjectOfType<ItemPlacementSystem>();
+            if (items == null) items = FindFirstObjectByType<ItemPlacementSystem>();
             Won = Lost = false;
 
-            _waterRoot = new GameObject("WaterSim").transform;
-            _waterRoot.SetParent(Root, false);
+            int lastStep = PlanFlood();
+            _endTime = lastStep + 0.5f;                          // the last tiles are full
 
-            // Seed every source.
-            foreach (var t in Level.tiles)
-                if (t.role == TileRole.Source) Flood(t.coord);
+            CreateWaterRoot();
+            SpawnPlannedViews();
+            // Keep the clock running past the result until the far corners are full and the foam has faded.
+            _visualEnd = Mathf.Max(_endTime, (_waterBody != null ? _waterBody.MaxArrival : _endTime) + 1.5f);
 
-            // A source sitting on a city loses immediately.
-            if (AnyCityFlooded()) { Lose(); return; }
-
+            SetWaterTime(0f);
             Running = true;
+            SetStage(FloodStage.Flooding);
+            RevealReached();                                     // sources (a source on a city loses here)
             _run = StartCoroutine(RunFlow());
         }
 
@@ -122,26 +246,94 @@ namespace HexFluid
             Running = false;
         }
 
+        /// <summary>Plays the planned flood back on one smooth clock.</summary>
         private IEnumerator RunFlow()
         {
-            var wait = new WaitForSeconds(Mathf.Max(0.05f, stepInterval));
-            while (Running)
+            bool decided = false;
+            while (true)
             {
-                yield return wait;
+                if (!decided && WaterTime >= _endTime)
+                {
+                    decided = true;
+                    if (!Lost) Win();                            // settled and no city flooded
+                }
+                if (WaterTime >= _visualEnd) break;
 
-                int added = SpreadOneStep(out bool cityHit);
-                if (cityHit) { Lose(); yield break; }
-                if (added == 0) { Win(); yield break; } // settled and no city flooded
+                yield return null;
+                SetWaterTime(Mathf.Min(_visualEnd, WaterTime + Time.deltaTime / Mathf.Max(0.05f, stepInterval)));
+                RevealReached();
+            }
+
+            Running = false;
+            _run = null;
+        }
+
+        private void SetWaterTime(float t)
+        {
+            WaterTime = t;
+            Shader.SetGlobalFloat(WaterTimeId, t);
+        }
+
+        /// <summary>
+        /// A tile counts as reached once the front crosses into it (half a tile before
+        /// its centre). That's when its indicator appears and a city loses.
+        /// </summary>
+        private void RevealReached()
+        {
+            foreach (var kv in _arrival)
+            {
+                if (_reached.Contains(kv.Key) || WaterTime < kv.Value - 0.5f) continue;
+                _reached.Add(kv.Key);
+                if (showTileIndicators) _waterViews[kv.Key] = SpawnWater(kv.Key);
+                if (!Lost && Level.GetTile(kv.Key).role == TileRole.City) Lose();
             }
         }
 
         // =====================================================================
-        // Flow rules
+        // Flow rules (worked out up front)
         // =====================================================================
 
-        private int SpreadOneStep(out bool cityHit)
+        private void SeedSources()
         {
-            cityHit = false;
+            _flooded.Clear();
+            _arrival.Clear();
+            _cameFrom.Clear();
+            _reached.Clear();
+            foreach (var t in Level.tiles)
+                if (t.role == TileRole.Source) { _flooded.Add(t.coord); _arrival[t.coord] = 0; }
+        }
+
+        /// <summary>
+        /// Runs the rules step by step until the water settles or reaches a city, and
+        /// records which step each tile gets water on. Returns the last step.
+        /// </summary>
+        private int PlanFlood()
+        {
+            SeedSources();
+            if (AnyCityFlooded()) return 0;                      // a source sits on a city
+
+            int step = 0;
+            while (true)
+            {
+                var next = SpreadOneStep();
+                if (next.Count == 0) break;                      // settled
+                step++;
+
+                bool cityHit = false;
+                foreach (var n in next)
+                {
+                    _flooded.Add(n);
+                    _arrival[n] = step;
+                    if (Level.GetTile(n).role == TileRole.City) cityHit = true;
+                }
+                if (cityHit) break;                              // the water stops at the city
+            }
+            return step;
+        }
+
+        /// <summary>Every tile the current water may enter on the next step.</summary>
+        private HashSet<HexCoord> SpreadOneStep()
+        {
             var next = new HashSet<HexCoord>();
 
             foreach (var cur in _flooded)
@@ -177,13 +369,7 @@ namespace HexFluid
                     }
                 }
             }
-
-            foreach (var n in next)
-            {
-                Flood(n);
-                if (Level.GetTile(n).role == TileRole.City) cityHit = true;
-            }
-            return next.Count;
+            return next;
         }
 
         /// <summary>Adds 'n' to the flood set for this step if water may enter it from 'cur'.</summary>
@@ -238,18 +424,135 @@ namespace HexFluid
         // Visuals
         // =====================================================================
 
-        private void Flood(HexCoord c)
+        /// <summary>
+        /// Sets up the whole run's look: a FloodedTile on every tile in the plan (sinks
+        /// it just ahead of the front) and one WaterBody surface over all of them.
+        /// </summary>
+        private void SpawnPlannedViews()
         {
-            if (!_flooded.Add(c)) return;
-            _waterViews[c] = SpawnWater(c);
+            if (!floodVisuals) return;
+            Material mat = FlowMaterial();
+            if (mat == null) return;
+
+            var flows = new List<WaterBody.TileFlow>();
+            float level = float.NaN;
+            float sinkLength = sinkDuration / Mathf.Max(0.05f, stepInterval);
+
+            foreach (var c in _flooded)
+            {
+                bool source = !_cameFrom.ContainsKey(c);
+                int arrival = _arrival[c];
+                flows.Add(new WaterBody.TileFlow
+                {
+                    coord = c,
+                    arrival = arrival,
+                    parents = source ? new HexCoord[0] : new List<HexCoord>(_cameFrom[c]).ToArray(),
+                    flow = FlowOf(c),
+                });
+
+                GameObject tile = board != null ? board.GetTileObject(c) : null;
+                if (tile == null) continue;
+
+                float restY = c.ToWorld(HexSize).y;
+                if (float.IsNaN(level)) level = SurfaceLevelFor(tile, restY);
+
+                var old = tile.GetComponent<FloodedTile>();
+                if (old != null) DestroyImmediate(old);           // left over from a previous run
+
+                float sinkEnd = source ? AlwaysWet : arrival - 0.35f;
+                var view = tile.AddComponent<FloodedTile>();
+                view.Init(this, restY, sinkDepth, sinkEnd - sinkLength, sinkEnd);
+                _tileViews[c] = view;
+            }
+            if (float.IsNaN(level)) return;
+
+            var go = new GameObject("WaterBody");
+            go.transform.SetParent(_waterRoot, false);
+            go.transform.localPosition = new Vector3(0f, level, 0f);   // one level everywhere
+            _waterBody = go.AddComponent<WaterBody>();
+            var boardTiles = new HashSet<HexCoord>();               // banks only where water meets dry tiles, not the board's outside
+            foreach (var t in Level.tiles) boardTiles.Add(t.coord);
+            _waterBody.Build(mat, HexSize, flows, boardTiles);
         }
 
+        /// <summary>
+        /// Points a tile's water downstream: towards the tiles it feeds, or onward from
+        /// where it came in, or the board's flow direction for a lone source.
+        /// </summary>
+        private Vector2 FlowOf(HexCoord cur)
+        {
+            Vector3 sum = Vector3.zero;
+            for (int d = 0; d < 6; d++)
+            {
+                var n = cur.Neighbor(d);
+                if (_cameFrom.TryGetValue(n, out var from) && from.Contains(cur))
+                    sum += n.ToWorld(HexSize) - cur.ToWorld(HexSize);
+            }
+
+            Vector2 dir = new Vector2(sum.x, sum.z);
+            if (dir.sqrMagnitude < 1e-6f && _cameFrom.TryGetValue(cur, out var inflow))
+            {
+                foreach (var f in inflow) sum += cur.ToWorld(HexSize) - f.ToWorld(HexSize);
+                dir = new Vector2(sum.x, sum.z);
+            }
+            if (dir.sqrMagnitude < 1e-6f)
+            {
+                Vector3 d = flowDirection.sqrMagnitude > 0.0001f ? flowDirection : Vector3.back;
+                dir = new Vector2(d.x, d.z);
+            }
+            return dir.normalized;
+        }
+
+        /// <summary>Board-space height of the water surface over a tile resting at restY.</summary>
+        private float SurfaceLevelFor(GameObject tile, float restY)
+        {
+            float manual = restY - sinkDepth + flowSurfaceHeight;
+            if (!autoSurfaceHeight) return manual;
+            float top = TileTopAbovePivot(tile);
+            if (float.IsNaN(top) || float.IsInfinity(top) || Mathf.Abs(top) > 100f) return manual; // bad measurement
+            return restY + top - waterBelowGround;              // just under the dry tiles' tops
+        }
+
+        /// <summary>
+        /// How far the top of the tile's base hex is above its pivot, in board units.
+        /// Uses the tile's own mesh (the first one), so houses / trees on it don't count.
+        /// </summary>
+        private float TileTopAbovePivot(GameObject tile)
+        {
+            var mf = tile.GetComponent<MeshFilter>();
+            if (mf == null) mf = tile.GetComponentInChildren<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null) return float.NaN;
+
+            if (!_meshTop.TryGetValue(mf.sharedMesh, out float top))
+            {
+                // Mesh bounds work even when the model isn't Read/Write enabled (vertices don't, at runtime).
+                Bounds b = mf.sharedMesh.bounds;
+                top = float.MinValue;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    top = Mathf.Max(top, Root.InverseTransformPoint(mf.transform.TransformPoint(corner)).y - tile.transform.localPosition.y);
+                }
+                _meshTop[mf.sharedMesh] = top;
+            }
+            return top;
+        }
+
+        private Material FlowMaterial()
+        {
+            if (flowMaterial == null) flowMaterial = Resources.Load<Material>("FlowingWater");
+            if (flowMaterial == null && floodVisuals)
+            {
+                floodVisuals = false;
+                Debug.LogWarning("WaterSimulation: no flowing water material. Assign 'flowMaterial' or keep Resources/FlowingWater.mat.", this);
+            }
+            return flowMaterial;
+        }
+
+        /// <summary>The old per-tile indicator above a tile the water reached: the prefab, else a blue plane.</summary>
         private GameObject SpawnWater(HexCoord c)
         {
-            GameObject go = waterPlanePrefab != null
-                ? Instantiate(waterPlanePrefab, _waterRoot)
-                : MakeBluePlane(_waterRoot);
-
+            GameObject go = waterPlanePrefab != null ? Instantiate(waterPlanePrefab, _waterRoot) : MakeBluePlane(_waterRoot);
             go.name = $"Water {c}";
             go.transform.localPosition = c.ToWorld(HexSize, waterYOffset);
             go.transform.localRotation = Quaternion.identity;
@@ -283,25 +586,38 @@ namespace HexFluid
         {
             foreach (var w in _waterViews.Values) if (w) DestroySafe(w);
             _waterViews.Clear();
+            foreach (var v in _tileViews.Values) if (v) v.Restore();
+            _tileViews.Clear();
             _flooded.Clear();
+            _arrival.Clear();
             _cameFrom.Clear();
-            if (_waterRoot) DestroySafe(_waterRoot.gameObject);
+            _reached.Clear();
+            if (_waterRoot) DestroySafe(_waterRoot.gameObject);  // takes the WaterBody with it
             _waterRoot = null;
+            _waterBody = null;
+        }
+
+        private void SetStage(FloodStage stage)
+        {
+            if (stage == Stage) return;
+            Stage = stage;
+            StageChanged?.Invoke(stage);
         }
 
         private void Win()
         {
-            Running = false;
             Won = true;
-            Debug.Log("WIN — the water settled and no city was flooded.", this);
+            Debug.Log("WIN â€” the water settled and no city was flooded.", this);
+            SetStage(FloodStage.Contained);
             WonEvent?.Invoke();
         }
 
+        /// <summary>The water keeps flowing to the end of the plan; the result is already decided.</summary>
         private void Lose()
         {
-            Running = false;
             Lost = true;
-            Debug.Log("LOSE — the water reached a city.", this);
+            Debug.Log("LOSE â€” the water reached a city.", this);
+            SetStage(FloodStage.CityFlooded);
             LostEvent?.Invoke();
         }
 

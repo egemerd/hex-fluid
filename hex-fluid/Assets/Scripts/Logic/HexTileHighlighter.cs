@@ -89,9 +89,12 @@ namespace HexFluid
             if (level != null) hexSize = level.hexSize;
         }
 
-        /// <summary>Is this tile still falling in (owned by a drop animator)?</summary>
+        /// <summary>
+        /// Is something else moving this tile? Still falling in (drop animator) or
+        /// flooded and sunk (FloodedTile) - the hover leaves those alone.
+        /// </summary>
         private static bool IsDropping(Transform t) =>
-            t != null && t.GetComponent<TileDropAnimator>() != null;
+            t != null && (t.GetComponent<TileDropAnimator>() != null || t.GetComponent<FloodedTile>() != null);
 
         /// <summary>
         /// Maps each tile object under 'tilesParent' to its hex coord by its X/Z
