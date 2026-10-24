@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e078eeb395d95144b807c302d58a3038, type: 3}
+  m_Name: mapload
+  m_EditorClassIdentifier: Assembly-CSharp::SoundSO
+  clips:
+  - {fileID: 8300000, guid: 076b6bcc26b94de4a87a98edbc52ae0d, type: 3}
+  volume: 1
+  volumeVariation: 0
+  pitch: 1
+  pitchVariation: 0.05
+  mixerGroup: {fileID: 0}
+  loop: 0
+  spatialBlend: 0
+  priority: 128
+  minInterval: 0
