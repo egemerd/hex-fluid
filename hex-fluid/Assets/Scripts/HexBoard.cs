@@ -16,6 +16,9 @@ namespace HexFluid
         [Header("Level")]
         public LevelData level;
 
+        [Tooltip("Per-type models: each resource / role gets its own hex model. Optional.")]
+        public TileModelSet modelSet;
+
         [Header("Optional visuals")]
         [Tooltip("Prefab shown on a flooded tile (e.g. a water plane). Optional.")]
         public GameObject waterOverlayPrefab;
@@ -68,10 +71,27 @@ namespace HexFluid
             EvaluateEndState();
         }
 
+        /// <summary>
+        /// Picks the model for a tile. Priority:
+        ///   1. explicit per-tile modelIndex override (if set)
+        ///   2. the TileModelSet's resource / role model
+        ///   3. the board's defaultTileModel
+        /// </summary>
         private GameObject ResolveModel(HexTileData tile)
         {
-            if (tile.modelIndex >= 0 && tile.modelIndex < level.tileModels.Count)
+            // 1. Explicit per-tile override wins (for one-off special tiles).
+            if (tile.modelIndex >= 0 && tile.modelIndex < level.tileModels.Count
+                && level.tileModels[tile.modelIndex] != null)
                 return level.tileModels[tile.modelIndex];
+
+            // 2. By type, from the shared model set.
+            if (modelSet != null)
+            {
+                var byType = modelSet.GetModel(tile);
+                if (byType != null) return byType;
+            }
+
+            // 3. Fallback.
             return level.defaultTileModel;
         }
 
