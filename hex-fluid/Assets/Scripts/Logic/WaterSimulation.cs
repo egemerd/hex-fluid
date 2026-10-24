@@ -12,11 +12,13 @@ namespace HexFluid
     /// Rules (all enforced here):
     ///   - Water starts at every Source tile.
     ///   - It only enters a neighbor that is lower down the board (the flow direction).
-    ///   - It can't cross a Barricade, a bridge carries it across even if not downhill,
-    ///     and a fixed map wall always blocks (see ItemPlacementSystem).
+    ///   - What an item does to an edge comes from the item itself (GetEdgeFlow):
+    ///     Block stops it, Force funnels it across even if not downhill. A Force edge
+    ///     only pushes water AWAY from the side it arrived on, never back over itself.
+    ///     A fixed map wall always blocks (see ItemPlacementSystem).
     ///   - It can't enter a resource tile.
-    ///   - Entering a City (house) = LOSE.
-    ///   - Water settles with no city flooded = WIN.
+    ///   - Entering a City (house) = LOSE, immediately.
+    ///   - Water keeps spreading until no tile can take more; if no city got flooded = WIN.
     ///
     /// Setup:
     ///   - Put this on your board object (or any object) and assign 'board' (your HexBoard).
@@ -68,6 +70,9 @@ namespace HexFluid
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
         private readonly HashSet<HexCoord> _flooded = new HashSet<HexCoord>();
+
+        // For each flooded tile, the neighbours its water came in from.
+        private readonly Dictionary<HexCoord, HashSet<HexCoord>> _cameFrom = new Dictionary<HexCoord, HashSet<HexCoord>>();
         private readonly Dictionary<HexCoord, GameObject> _waterViews = new Dictionary<HexCoord, GameObject>();
         private Transform _waterRoot;
         private Coroutine _run;
@@ -148,7 +153,7 @@ namespace HexFluid
                 for (int d = 0; d < 6; d++)
                 {
                     var n = cur.Neighbor(d);
-                    if (items != null && items.GetEdgeFlow(cur, n) == EdgeFlow.Force)
+                    if (FlowAcross(cur, n) == EdgeFlow.Force)
                     {
                         if (bridged == null) bridged = new List<HexCoord>();
                         bridged.Add(n);
@@ -167,7 +172,7 @@ namespace HexFluid
                     for (int d = 0; d < 6; d++)
                     {
                         var n = cur.Neighbor(d);
-                        if (items != null && items.GetEdgeFlow(cur, n) == EdgeFlow.Block) continue;
+                        if (FlowAcross(cur, n) == EdgeFlow.Block) continue;
                         Consider(cur, n, next, ignoreDownhill: false);
                     }
                 }
@@ -194,6 +199,20 @@ namespace HexFluid
             if (td.resource != ResourceType.None) return;            // water can't enter resource tiles
 
             next.Add(n);
+            if (!_cameFrom.TryGetValue(n, out var from)) _cameFrom[n] = from = new HashSet<HexCoord>();
+            from.Add(cur);                                           // remember where n's water came from
+        }
+
+        /// <summary>
+        /// What the item on the edge cur->n does to water leaving cur. The edge the water
+        /// came in through is ignored, so a bridge carries water across once and the
+        /// tile on the far side then flows on normally instead of pushing it back.
+        /// </summary>
+        private EdgeFlow FlowAcross(HexCoord cur, HexCoord n)
+        {
+            if (items == null) return EdgeFlow.Default;
+            if (_cameFrom.TryGetValue(cur, out var from) && from.Contains(n)) return EdgeFlow.Default;
+            return items.GetEdgeFlow(cur, n);
         }
 
         /// <summary>True if 'to' is further along the flow direction than 'from'.</summary>
@@ -265,6 +284,7 @@ namespace HexFluid
             foreach (var w in _waterViews.Values) if (w) DestroySafe(w);
             _waterViews.Clear();
             _flooded.Clear();
+            _cameFrom.Clear();
             if (_waterRoot) DestroySafe(_waterRoot.gameObject);
             _waterRoot = null;
         }
