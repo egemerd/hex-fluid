@@ -993,6 +993,7 @@ GameObject:
   - component: {fileID: 731516376}
   - component: {fileID: 731516377}
   - component: {fileID: 731516378}
+  - component: {fileID: 731516379}
   m_Layer: 0
   m_Name: HexBoard
   m_TagString: Untagged
@@ -1022,6 +1023,11 @@ MonoBehaviour:
   dropBounce: 0
   buildSound: {fileID: 11400000, guid: d686e96a6fd26fc4bab7835ebd847eda, type: 2}
   buildSoundOffset: 0
+  riseOut: 1
+  riseHeight: 8
+  riseDuration: 0.45
+  riseStagger: 0.5
+  clearSound: {fileID: 0}
 --- !u!4 &731516368
 Transform:
   m_ObjectHideFlags: 0
@@ -1049,7 +1055,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90075623c5458c34d81f813acc799dab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexFluid.HexTileHighlighter
-  level: {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
+  hexBoard: {fileID: 0}
   board: {fileID: 731516368}
   tilesParent: {fileID: 0}
   cam: {fileID: 330585545}
@@ -1070,7 +1076,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3cdbf8b23a26d5f40b159cc5d4084f38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexFluid.HexHarvester
-  level: {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
+  hexBoard: {fileID: 0}
   board: {fileID: 731516368}
   cam: {fileID: 330585545}
   inventory: {fileID: 0}
@@ -1233,6 +1239,32 @@ MonoBehaviour:
   maxDropsPerResource: 30
   vanishDuration: 0.25
   ensurePhysics: 1
+--- !u!114 &731516379
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731516366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13e7d05e1fae5fe4a8ca382624bd354b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.LevelManager
+  board: {fileID: 0}
+  water: {fileID: 0}
+  inventory: {fileID: 0}
+  crafting: {fileID: 0}
+  levels:
+  - {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
+  - {fileID: 11400000, guid: 49e630fc992169b479d42aac5eaf99f4, type: 2}
+  startLevel: 0
+  autoAdvanceOnWin: 1
+  nextLevelDelay: 1
+  restartOnFail: 1
+  restartDelay: 2
+  keyboardShortcuts: 1
+  resetInventoryEachLevel: 1
 --- !u!1 &803884256
 GameObject:
   m_ObjectHideFlags: 0

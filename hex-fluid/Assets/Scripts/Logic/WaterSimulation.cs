@@ -161,12 +161,16 @@ namespace HexFluid
 
         private void OnEnable()
         {
-            if (board != null) board.LevelLoaded += OnLevelLoaded;
+            if (board == null) return;
+            board.LevelLoaded += OnLevelLoaded;
+            board.LevelUnloading += ResetFlood;
         }
 
         private void OnDisable()
         {
-            if (board != null) board.LevelLoaded -= OnLevelLoaded;
+            if (board == null) return;
+            board.LevelLoaded -= OnLevelLoaded;
+            board.LevelUnloading -= ResetFlood;
         }
 
         private void Start()
@@ -182,14 +186,7 @@ namespace HexFluid
         /// </summary>
         private void OnLevelLoaded(LevelData level)
         {
-            StopSimulation();
-            if (_sourcesRun != null) StopCoroutine(_sourcesRun);
-            _sourcesRun = null;
-            ClearWater();
-            Won = Lost = false;
-            SetWaterTime(0f);
-            SetStage(FloodStage.Calm);
-
+            ResetFlood();
             if (autoStart) StartSimulation();
             else if (floodSourcesOnLoad) _sourcesRun = StartCoroutine(FloodSourcesWhenBoardReady());
         }
@@ -236,9 +233,22 @@ namespace HexFluid
         // Control
         // =====================================================================
 
+        /// <summary>Stops and removes the current flood (the level is leaving, or a new one just arrived).</summary>
+        private void ResetFlood()
+        {
+            StopSimulation();
+            if (_sourcesRun != null) StopCoroutine(_sourcesRun);
+            _sourcesRun = null;
+            ClearWater();
+            Won = Lost = false;
+            SetWaterTime(0f);
+            SetStage(FloodStage.Calm);
+        }
+
         /// <summary>Begin the water flow from the start. Hook your Start button to this.</summary>
         public void StartSimulation()
         {
+            if (board != null && board.IsChangingLevel) return;  // between levels: nothing to flood yet
             if (Level == null)
             {
                 Debug.LogError("WaterSimulation: assign a HexBoard that has a LevelData.", this);

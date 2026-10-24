@@ -1,3 +1,6 @@
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,7 +15,12 @@ namespace HexFluid
     /// through HexBoard.LevelLoaded, so none of them reference a LevelData directly.
     ///
     /// When the water settles without reaching a city (WaterSimulation.WonEvent) it
-    /// waits a moment, despawns the level and drops the next one in.
+    /// waits a moment, despawns the level and drops the next one in. When the water
+    /// reaches a city (LostEvent) it plays the same level again.
+    ///
+    /// Keys: R = restart this level, Esc = back to the first level.
+    /// Every change is the same in-scene animation: the old tiles fly up, the new
+    /// ones drop in (see HexBoard). No scene is ever reloaded.
     ///
     /// Setup:
     ///   - Put this on your board object (or any object). Everything is auto-found.
@@ -40,6 +48,16 @@ namespace HexFluid
 
         [Tooltip("Seconds to wait after a win before the next level loads (enjoy the result first).")]
         [Min(0f)] public float nextLevelDelay = 2.5f;
+
+        [Tooltip("Play the same level again when the water reaches a city.")]
+        public bool restartOnFail = true;
+
+        [Tooltip("Seconds to wait after a loss before the level restarts (see the water hit the city first).")]
+        [Min(0f)] public float restartDelay = 2f;
+
+        [Header("Keys")]
+        [Tooltip("R restarts the current level, Esc goes back to the first level.")]
+        public bool keyboardShortcuts = true;
 
         [Tooltip("Empty the resources and crafted items when a level starts, so each level is played from scratch.")]
         public bool resetInventoryEachLevel = true;
@@ -76,13 +94,20 @@ namespace HexFluid
         private void OnEnable()
         {
             if (board != null) board.LevelLoaded += OnLevelLoaded;
-            if (water != null) water.WonEvent += OnWon;
+            if (water != null) { water.WonEvent += OnWon; water.LostEvent += OnLost; }
         }
 
         private void OnDisable()
         {
             if (board != null) board.LevelLoaded -= OnLevelLoaded;
-            if (water != null) water.WonEvent -= OnWon;
+            if (water != null) { water.WonEvent -= OnWon; water.LostEvent -= OnLost; }
+        }
+
+        private void Update()
+        {
+            if (!keyboardShortcuts || levels.Count == 0) return;
+            if (RestartPressed()) RestartLevel();
+            else if (FirstLevelPressed()) LoadLevel(0);
         }
 
         // ---- Control -----------------------------------------------------------
@@ -126,16 +151,46 @@ namespace HexFluid
 
         private void OnWon()
         {
-            if (!autoAdvanceOnWin) return;
-            if (_advance != null) StopCoroutine(_advance);
-            _advance = StartCoroutine(NextLevelAfterDelay());
+            if (autoAdvanceOnWin) After(nextLevelDelay, NextLevel);
         }
 
-        private IEnumerator NextLevelAfterDelay()
+        private void OnLost()
         {
-            if (nextLevelDelay > 0f) yield return new WaitForSeconds(nextLevelDelay);
+            if (restartOnFail) After(restartDelay, RestartLevel);
+        }
+
+        /// <summary>Runs 'then' after a delay. Any level load in between (R, Esc...) cancels it.</summary>
+        private void After(float delay, Action then)
+        {
+            if (_advance != null) StopCoroutine(_advance);
+            _advance = StartCoroutine(Wait(delay, then));
+        }
+
+        private IEnumerator Wait(float delay, Action then)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
             _advance = null;
-            NextLevel();
+            then();
+        }
+
+        // ---- Input (old Input Manager or new Input System) --------------------
+
+        private static bool RestartPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.R);
+#endif
+        }
+
+        private static bool FirstLevelPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            return Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
+#else
+            return Input.GetKeyDown(KeyCode.Escape);
+#endif
         }
     }
 }

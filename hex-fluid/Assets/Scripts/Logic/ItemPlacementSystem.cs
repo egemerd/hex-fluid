@@ -45,16 +45,28 @@ namespace HexFluid
 
         private void OnEnable()
         {
-            if (board != null) board.LevelLoaded += OnLevelLoaded;
+            if (board == null) return;
+            board.LevelLoaded += OnLevelLoaded;
+            board.LevelUnloading += FlyAwayAll;
         }
 
         private void OnDisable()
         {
-            if (board != null) board.LevelLoaded -= OnLevelLoaded;
+            if (board == null) return;
+            board.LevelLoaded -= OnLevelLoaded;
+            board.LevelUnloading -= FlyAwayAll;
         }
 
         // A new level starts empty: the old level's items go with it.
         private void OnLevelLoaded(LevelData level) => ClearAll();
+
+        /// <summary>The level is leaving: placed items fly up with the tiles (and destroy themselves).</summary>
+        private void FlyAwayAll()
+        {
+            foreach (var p in _edgeItems.Values)
+                if (p.view) p.view.AddComponent<TileRiseAnimator>().Play(board.riseHeight, Random.Range(0f, board.riseStagger), board.riseDuration);
+            _edgeItems.Clear();
+        }
 
         private void EnsureRoot()
         {

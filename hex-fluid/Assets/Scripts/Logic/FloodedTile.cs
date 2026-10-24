@@ -17,8 +17,8 @@ namespace HexFluid
         private WaterSimulation _sim;
         private float _restY, _sinkDepth, _sinkStart, _sinkEnd;
 
-        /// <summary>Is this tile still dropping in? It must land before it can sink.</summary>
-        private bool Dropping => GetComponent<TileDropAnimator>() != null;
+        /// <summary>Is this tile still dropping in (or flying away on a level change)? Then leave its height alone.</summary>
+        private bool Dropping => GetComponent<TileDropAnimator>() != null || GetComponent<TileRiseAnimator>() != null;
 
         /// <summary>The tile rests at restY and sinks by sinkDepth between sinkStart and sinkEnd on the water clock (in tiles).</summary>
         public void Init(WaterSimulation sim, float restY, float sinkDepth, float sinkStart, float sinkEnd)

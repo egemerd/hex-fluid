@@ -51,6 +51,22 @@ namespace HexFluid
         [Tooltip("Extra seconds to shift the sound by (negative = earlier, e.g. if the clip has a slow start).")]
         public float buildSoundOffset = 0f;
 
+        [Header("Level change animation")]
+        [Tooltip("When switching levels, fly the old tiles up and away before the new ones drop in (Play mode only).")]
+        public bool riseOut = true;
+
+        [Tooltip("How high the old tiles fly before they disappear.")]
+        public float riseHeight = 12f;
+
+        [Tooltip("How long each old tile takes to fly up.")]
+        public float riseDuration = 0.45f;
+
+        [Tooltip("Max random delay before an old tile starts rising (0 = all together).")]
+        public float riseStagger = 0.5f;
+
+        [Tooltip("Played once as the old board starts flying away.")]
+        public SoundSO clearSound;
+
         // coord -> spawned tile root
         private readonly Dictionary<HexCoord, GameObject> _tileObjects = new();
         // coord -> spawned water overlay (if any)
@@ -72,23 +88,76 @@ namespace HexFluid
         /// <summary>Fires after the board is (re)built from a level. Scripts reset their per-level state here.</summary>
         public event System.Action<LevelData> LevelLoaded;
 
+        /// <summary>Fires when the old level starts leaving (its tiles fly away). Level is already null.</summary>
+        public event System.Action LevelUnloading;
+
+        /// <summary>True while the old tiles are flying away and the next level hasn't been built yet.</summary>
+        public bool IsChangingLevel { get; private set; }
+
         private bool _ownsLevel; // Level is a runtime copy we made (destroy it on unload)
+        private readonly List<GameObject> _leaving = new(); // old tiles still flying away
 
         void Start()
         {
             if (level != null && Level == null) Build();
         }
 
-        /// <summary>Despawns the current level and builds the given one in its place.</summary>
+        /// <summary>
+        /// Despawns the current level and builds the given one in its place. In Play
+        /// mode the old tiles fly up first, then the new ones drop in. Calling it again
+        /// mid-change just swaps which level gets built.
+        /// </summary>
         public void LoadLevel(LevelData newLevel)
         {
             level = newLevel;
+            if (IsChangingLevel) return;                 // the running change builds 'level' when it's done
+
+            if (riseOut && Application.isPlaying && _tileObjects.Count > 0)
+                StartCoroutine(ChangeLevel());
+            else
+                Build();
+        }
+
+        private IEnumerator ChangeLevel()
+        {
+            IsChangingLevel = true;
+            float wait = RiseOut();
+            LevelUnloading?.Invoke();
+            if (wait > 0f) yield return new WaitForSeconds(wait);
+            IsChangingLevel = false;
             Build();
+        }
+
+        /// <summary>
+        /// Sends every tile flying up (they destroy themselves at the top) and unloads
+        /// the level. Returns how long until the last one is gone.
+        /// </summary>
+        private float RiseOut()
+        {
+            Sfx.Play(clearSound);
+
+            float longest = 0f;
+            foreach (var go in _tileObjects.Values)
+            {
+                if (!go) continue;
+                var drop = go.GetComponent<TileDropAnimator>();
+                if (drop) DestroyImmediate(drop);        // still landing: take off from where it is
+
+                float delay = Random.Range(0f, Mathf.Max(0f, riseStagger));
+                go.AddComponent<TileRiseAnimator>().Play(riseHeight, delay, riseDuration);
+                longest = Mathf.Max(longest, delay + riseDuration);
+                _leaving.Add(go);
+            }
+            _tileObjects.Clear();                        // they're on their way out; Clear() won't touch them
+            Clear();
+            return longest;
         }
 
         /// <summary>Clears and rebuilds the whole board from the level asset.</summary>
         public void Build()
         {
+            foreach (var go in _leaving) if (go) DestroySafe(go);   // any old tile that hasn't flown off yet
+            _leaving.Clear();
             Clear();
             if (level == null) return;
 
