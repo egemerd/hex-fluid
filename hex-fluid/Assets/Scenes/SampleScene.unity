@@ -526,6 +526,7 @@ GameObject:
   - component: {fileID: 731516370}
   - component: {fileID: 731516371}
   - component: {fileID: 731516372}
+  - component: {fileID: 731516373}
   m_Layer: 0
   m_Name: HexBoard
   m_TagString: Untagged
@@ -635,6 +636,26 @@ MonoBehaviour:
   harvester: {fileID: 0}
   inventory: {fileID: 0}
   screenOffset: {x: 12, y: 12}
+--- !u!114 &731516373
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731516366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c107efa49f53f054886c9af6699fb060, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.WaterSimulation
+  board: {fileID: 731516367}
+  waterPlanePrefab: {fileID: 6197171472498319190, guid: 3b29cba3664c5e744a8b7214cec0409f, type: 3}
+  waterYOffset: 1.2
+  waterColor: {r: 0.2, g: 0.5, b: 1, a: 1}
+  planeSizeFactor: 1.8
+  stepInterval: 1.2
+  flowDirection: {x: 0, y: 0, z: 1}
+  autoStart: 0
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -723,7 +744,19 @@ MonoBehaviour:
   debugMessage: Game started
   onClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 731516373}
+        m_TargetAssemblyTypeName: HexFluid.WaterSimulation, Assembly-CSharp
+        m_MethodName: StartSimulation
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!65 &889892786
 BoxCollider:
   m_ObjectHideFlags: 0

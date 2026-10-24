@@ -42,7 +42,7 @@ MonoBehaviour:
       q: 1
       r: -6
     modelIndex: -1
-    role: 3
+    role: 0
     resource: 0
     resourceAmount: 0
     customTag: 
