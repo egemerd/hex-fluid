@@ -411,6 +411,9 @@ GameObject:
   - component: {fileID: 731516368}
   - component: {fileID: 731516367}
   - component: {fileID: 731516369}
+  - component: {fileID: 731516370}
+  - component: {fileID: 731516371}
+  - component: {fileID: 731516372}
   m_Layer: 0
   m_Name: HexBoard
   m_TagString: Untagged
@@ -468,6 +471,57 @@ MonoBehaviour:
   liftHeight: 0.25
   liftSpeed: 12
   requireExistingTile: 1
+--- !u!114 &731516370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731516366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3cdbf8b23a26d5f40b159cc5d4084f38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.HexHarvester
+  level: {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
+  board: {fileID: 731516368}
+  cam: {fileID: 330585545}
+  inventory: {fileID: 0}
+  hexSize: 1
+  surfaceY: 0
+  harvestingActive: 1
+  maxHarvests: 0
+  autoEndWhenDone: 1
+--- !u!114 &731516371
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731516366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95ae90f6635547e4884d3aa15da08ab9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.HarvestFeedback
+  harvester: {fileID: 0}
+  tilesParent: {fileID: 0}
+  mode: 2
+--- !u!114 &731516372
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731516366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da44a2d53fd6d9d4888a112643b45e0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.InventoryDebugUI
+  harvester: {fileID: 0}
+  inventory: {fileID: 0}
+  screenOffset: {x: 12, y: 12}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
