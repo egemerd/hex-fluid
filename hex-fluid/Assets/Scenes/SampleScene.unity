@@ -2464,7 +2464,6 @@ GameObject:
   - component: {fileID: 731516369}
   - component: {fileID: 731516370}
   - component: {fileID: 731516371}
-  - component: {fileID: 731516372}
   - component: {fileID: 731516373}
   - component: {fileID: 731516375}
   - component: {fileID: 731516374}
@@ -2508,6 +2507,10 @@ MonoBehaviour:
   riseDuration: 0.45
   riseStagger: 0.5
   clearSound: {fileID: 0}
+  fitToTable: 1
+  tableAreaCenter: {x: 1, y: -6}
+  tableAreaSize: {x: 10, y: 10}
+  maxFitScale: 1
 --- !u!4 &731516368
 Transform:
   m_ObjectHideFlags: 0
@@ -2589,21 +2592,6 @@ MonoBehaviour:
   cameraShakeStrength: 0.12
   tileShakeDuration: 0.25
   tileShakeStrength: 0.08
---- !u!114 &731516372
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 731516366}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: da44a2d53fd6d9d4888a112643b45e0c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.InventoryDebugUI
-  harvester: {fileID: 0}
-  inventory: {fileID: 0}
-  screenOffset: {x: 12, y: 12}
 --- !u!114 &731516373
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2756,7 +2744,7 @@ MonoBehaviour:
   inventory: {fileID: 0}
   crafting: {fileID: 0}
   levels:
-  - {fileID: 11400000, guid: 3fc01af323ad387438b8288c377e362c, type: 2}
+  - {fileID: 11400000, guid: 8994cfdcedbca384fbac5ec33998c666, type: 2}
   - {fileID: 11400000, guid: 5b56b53ad972a154eb986a8802072a65, type: 2}
   - {fileID: 11400000, guid: 2a5cbfafc3630514db372f1218ccdc43, type: 2}
   - {fileID: 11400000, guid: 49e630fc992169b479d42aac5eaf99f4, type: 2}

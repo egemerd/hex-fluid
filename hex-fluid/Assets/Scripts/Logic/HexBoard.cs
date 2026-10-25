@@ -70,6 +70,19 @@ namespace HexFluid
         [Tooltip("Played once as the old board starts flying away.")]
         public SoundSO clearSound;
 
+        [Header("Fit to table")]
+        [Tooltip("Centre each level on the table area below, and shrink it evenly if it's too big to fit (Play mode only).")]
+        public bool fitToTable = true;
+
+        [Tooltip("Middle of the free space on the table (world X / Z). The board's height is kept. Select the board to see the area.")]
+        public Vector2 tableAreaCenter = new Vector2(1f, -6f);
+
+        [Tooltip("Size of the free space on the table (world X / Z).")]
+        public Vector2 tableAreaSize = new Vector2(10f, 10f);
+
+        [Tooltip("Largest size a level is shown at (1 = its normal size, so small levels aren't blown up).")]
+        [Min(0.01f)] public float maxFitScale = 1f;
+
         // coord -> spawned tile root
         private readonly Dictionary<HexCoord, GameObject> _tileObjects = new();
         // coord -> spawned water overlay (if any)
@@ -99,6 +112,11 @@ namespace HexFluid
 
         private bool _ownsLevel; // Level is a runtime copy we made (destroy it on unload)
         private readonly List<GameObject> _leaving = new(); // old tiles still flying away
+
+        // The board's placement as set up in the scene; FitToTable() moves / scales from here.
+        private Vector3 _homePosition, _homeScale;
+        private bool _homeSaved;
+        private float _fitScale = 1f;
 
         void Start()
         {
@@ -147,7 +165,7 @@ namespace HexFluid
                 if (drop) DestroyImmediate(drop);        // still landing: take off from where it is
 
                 float delay = Random.Range(0f, Mathf.Max(0f, riseStagger));
-                go.AddComponent<TileRiseAnimator>().Play(riseHeight, delay, riseDuration);
+                go.AddComponent<TileRiseAnimator>().Play(riseHeight / _fitScale, delay, riseDuration);  // same height on screen at any fit
                 longest = Mathf.Max(longest, delay + riseDuration);
                 _leaving.Add(go);
             }
@@ -183,13 +201,19 @@ namespace HexFluid
                 go.name = $"Tile {tile.coord} [{tile.role}]";
                 go.transform.localPosition = tile.coord.ToWorld(Level.hexSize);
                 _tileObjects[tile.coord] = go;
+            }
 
-                // Drop it in from above with a random delay (Play mode only).
-                if (dropIn && Application.isPlaying)
+            // Centre (and if needed shrink) the board on the table, measured with the tiles at rest.
+            if (Application.isPlaying) FitToTable();
+
+            // Drop each tile in from above with a random delay (Play mode only).
+            if (dropIn && Application.isPlaying)
+            {
+                foreach (var go in _tileObjects.Values)
                 {
                     Vector3 target = go.transform.localPosition;
                     var anim = go.AddComponent<TileDropAnimator>();
-                    anim.Play(target, dropHeight, Random.Range(0f, maxStagger), fallDuration, dropBounce);
+                    anim.Play(target, dropHeight / _fitScale, Random.Range(0f, maxStagger), fallDuration, dropBounce);
                 }
             }
 
@@ -205,6 +229,68 @@ namespace HexFluid
             EvaluateEndState();
 
             LevelLoaded?.Invoke(Level);
+        }
+
+        /// <summary>
+        /// Moves the board so the level's tiles sit in the middle of the table area,
+        /// and shrinks it (every tile evenly) when the level is too big to fit. Always
+        /// starts from the board's scene placement, so each level is fitted on its own.
+        /// Everything else on the board (water, items, picking) follows, since it all
+        /// works in the board's own space.
+        /// </summary>
+        private void FitToTable()
+        {
+            if (!_homeSaved)
+            {
+                _homePosition = transform.position;
+                _homeScale = transform.localScale;
+                _homeSaved = true;
+            }
+            transform.position = _homePosition;
+            transform.localScale = _homeScale;
+            _fitScale = 1f;
+            if (!fitToTable) return;
+
+            // The tiles' footprint in board space: their models, not just the hex centres.
+            bool any = false;
+            var local = new Bounds();
+            foreach (var go in _tileObjects.Values)
+            {
+                foreach (var r in go.GetComponentsInChildren<Renderer>())
+                {
+                    Bounds b = r.bounds;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        var corner = new Vector3((i & 1) == 0 ? b.min.x : b.max.x,
+                                                 (i & 2) == 0 ? b.min.y : b.max.y,
+                                                 (i & 4) == 0 ? b.min.z : b.max.z);
+                        Vector3 p = transform.InverseTransformPoint(corner);
+                        if (any) local.Encapsulate(p);
+                        else { local = new Bounds(p, Vector3.zero); any = true; }
+                    }
+                }
+            }
+            if (!any) return;
+
+            // Shrink to fit (never past maxFitScale).
+            Vector3 size = Vector3.Scale(local.size, _homeScale);
+            float fit = maxFitScale;
+            if (size.x > 0f) fit = Mathf.Min(fit, tableAreaSize.x / size.x);
+            if (size.z > 0f) fit = Mathf.Min(fit, tableAreaSize.y / size.z);
+            _fitScale = fit;
+            transform.localScale = _homeScale * fit;
+
+            // Slide it so the footprint's middle lands on the area's middle; the height stays.
+            Vector3 middle = transform.TransformPoint(local.center);
+            transform.position += new Vector3(tableAreaCenter.x - middle.x, 0f, tableAreaCenter.y - middle.z);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!fitToTable) return;
+            float y = _homeSaved ? _homePosition.y : transform.position.y;
+            Gizmos.color = new Color(1f, 0.85f, 0.3f, 0.9f);
+            Gizmos.DrawWireCube(new Vector3(tableAreaCenter.x, y, tableAreaCenter.y), new Vector3(tableAreaSize.x, 0f, tableAreaSize.y));
         }
 
         /// <summary>
