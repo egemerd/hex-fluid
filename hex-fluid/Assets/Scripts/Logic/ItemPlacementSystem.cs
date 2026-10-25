@@ -32,6 +32,12 @@ namespace HexFluid
         [Header("References")]
         public HexBoard board;
 
+        [Tooltip("Knows which resource tiles were harvested (destroyed): nothing can be built next to those. Auto-found if empty.")]
+        public HexHarvester harvester;
+
+        [Tooltip("Items knocked off by a harvest go back here. Auto-found if empty.")]
+        public ItemCrafting crafting;
+
         [Tooltip("How high above the tiles items sit.")]
         public float itemYOffset = 0.1f;
 
@@ -53,11 +59,14 @@ namespace HexFluid
         private void Awake()
         {
             if (board == null) board = GetComponent<HexBoard>();
+            if (harvester == null) harvester = FindFirstObjectByType<HexHarvester>();
+            if (crafting == null) crafting = FindFirstObjectByType<ItemCrafting>();
             EnsureRoot();
         }
 
         private void OnEnable()
         {
+            if (harvester != null) harvester.Harvested += OnHarvested;
             if (board == null) return;
             board.LevelLoaded += OnLevelLoaded;
             board.LevelUnloading += FlyAwayAll;
@@ -65,10 +74,32 @@ namespace HexFluid
 
         private void OnDisable()
         {
+            if (harvester != null) harvester.Harvested -= OnHarvested;
             if (board == null) return;
             board.LevelLoaded -= OnLevelLoaded;
             board.LevelUnloading -= FlyAwayAll;
         }
+
+        /// <summary>
+        /// A tile was harvested and is gone: anything built on its edges has nothing to
+        /// stand on, so it's taken off and goes back to your stock.
+        /// </summary>
+        private void OnHarvested(HexCoord c, ResourceType type, int amount)
+        {
+            var knocked = new List<PlacedItem>();
+            foreach (var p in _items)
+                foreach (var e in p.edges)
+                    if (e.from == c || e.to == c) { knocked.Add(p); break; }
+
+            foreach (var p in knocked)
+            {
+                RemoveEdge(p.a, p.b);
+                if (crafting != null) crafting.Add(p.def);
+            }
+        }
+
+        /// <summary>A harvested resource tile: destroyed, so it can't hold anything.</summary>
+        private bool IsGone(HexCoord c) => harvester != null && harvester.IsHarvested(c);
 
         // A new level starts empty: the old level's items go with it.
         private void OnLevelLoaded(LevelData level) => ClearAll();
@@ -103,6 +134,7 @@ namespace HexFluid
             if (Level == null) return false;
             if (!Level.HasTile(a) || !Level.HasTile(b)) return false;
             if (a.DistanceTo(b) != 1) return false;              // must be adjacent
+            if (IsGone(a) || IsGone(b)) return false;            // a harvested (destroyed) tile on either side
             if (IsEdgeForbidden(a, b)) return false;             // a rule says no building here
             return !_edgeItems.ContainsKey(EdgeKey.Between(a, b)); // one item per edge
         }
@@ -154,11 +186,15 @@ namespace HexFluid
 
             var p = new PlacedItem { def = def, a = a, b = b };
             p.edges.AddRange(_footprint);                        // filled by CanPlace
+            // The model keeps its prefab's own rotation (e.g. a Blender import's -90 X),
+            // turned into the edge's frame, plus the item's fit-to-edge tweak.
+            Quaternion own = def.model != null ? def.model.transform.localRotation : Quaternion.identity;
+            Quaternion fit = Quaternion.Euler(def.modelRotation);
             foreach (var e in p.edges)
             {
                 GetEdgePose(e.from, e.to, out var pos, out var rot);
                 var view = def.model != null ? Instantiate(def.model, _root) : MakeBar(def, _root);
-                view.transform.SetPositionAndRotation(pos, rot);
+                view.transform.SetPositionAndRotation(pos + rot * def.modelOffset, rot * fit * own);
                 view.name = $"{def.DisplayName} {e.from}-{e.to}";
                 p.views.Add(view);
                 _edgeItems[e.Key] = p;

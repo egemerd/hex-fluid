@@ -19,12 +19,49 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _BankMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FloodMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
-    m_Floats: []
-    m_Colors: []
+    m_Floats:
+    - _Absorption: 9
+    - _BankFoamWidth: 0.017
+    - _ContactFoamDepth: 0.029
+    - _DepthCap: 0.22
+    - _EdgeOverhang: 0.128
+    - _FillDrop: 0.2
+    - _FilmFade: 0.86
+    - _FlowCycle: 1.6
+    - _FlowSpeed: 0.45
+    - _FoamSharpness: 0.044
+    - _FresnelPower: 2.98
+    - _FrontFoamFade: 0.148
+    - _FrontSoftness: 0.01
+    - _FrontWobble: 0.545
+    - _Gloss: 38
+    - _NormalStrength: 0.18
+    - _ReflectionStrength: 0.187
+    - _Refraction: 0.02
+    - _RippleScale: 5
+    - _SpecStrength: 0.42
+    - _SurgeHeight: 0.4
+    - _WaveHeight: 0.1
+    - _WaveScale: 2
+    m_Colors:
+    - _DeepColor: {r: 0.102794595, g: 0.2779071, b: 0.3962264, a: 1}
+    - _FloodRect: {r: 0, g: 0, b: 1, a: 1}
+    - _FoamColor: {r: 0.9339623, g: 0.7632088, b: 0.5594963, a: 1}
+    - _GlintDir: {r: 0.7, g: 0.76, b: 0.3, a: 0}
+    - _ShallowColor: {r: 0.62, g: 0.95, b: 0.93, a: 1}
+    - _SkyColor: {r: 0.7075472, g: 0.23757395, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

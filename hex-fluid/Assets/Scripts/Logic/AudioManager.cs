@@ -122,6 +122,14 @@ public class AudioManager : MonoBehaviour
         _loops.Remove(sound);
     }
 
+    /// <summary>Cuts off every one-shot of this sound that is still playing (loops: use StopLoop).</summary>
+    public void Stop(SoundSO sound)
+    {
+        if (sound == null || sound.clips == null) return;
+        foreach (var src in _active)
+            if (!src.loop && System.Array.IndexOf(sound.clips, src.clip) >= 0) src.Stop(); // Update tick'inde havuza doner
+    }
+
     private void ConfigureSource(AudioSource src, SoundSO s, AudioClip clip, Vector3 pos, bool usePos)
     {
         src.gameObject.SetActive(true);

@@ -47,6 +47,18 @@ namespace HexFluid
 
         public Color color = new Color(0.6f, 0.45f, 0.25f);
 
+        [Tooltip("Turns the model to fit the edge, on top of the prefab's own rotation. Edge space: X runs along the edge, Z goes across it (from one tile to the other), Y is up. e.g. (0, 90, 0) turns it a quarter.")]
+        public Vector3 modelRotation = Vector3.zero;
+
+        [Tooltip("Moves the model from the middle of the edge, in the same edge space (Y = up).")]
+        public Vector3 modelOffset = Vector3.zero;
+
+        [Tooltip("Falls onto the table for each one you've made but not placed yet (see CraftedItemDropSpawner). Empty = 'model'.")]
+        public GameObject dropModel;
+
+        [Tooltip("Played when one lands on the table. Optional.")]
+        public SoundSO dropLandSound;
+
         [Header("Audio")]
         [Tooltip("Played when this item is placed. Empty = the placer's shared place sound.")]
         public SoundSO placeSound;

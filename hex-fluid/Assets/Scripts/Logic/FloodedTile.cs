@@ -20,6 +20,9 @@ namespace HexFluid
         /// <summary>Is this tile still dropping in (or flying away on a level change)? Then leave its height alone.</summary>
         private bool Dropping => GetComponent<TileDropAnimator>() != null || GetComponent<TileRiseAnimator>() != null;
 
+        /// <summary>How far the tile has sunk, 0..1. Above 0 means the water has reached it.</summary>
+        public float Progress { get; private set; }
+
         /// <summary>The tile rests at restY and sinks by sinkDepth between sinkStart and sinkEnd on the water clock (in tiles).</summary>
         public void Init(WaterSimulation sim, float restY, float sinkDepth, float sinkStart, float sinkEnd)
         {
@@ -58,6 +61,7 @@ namespace HexFluid
             Vector3 p = transform.localPosition;
             p.y = _restY - _sinkDepth * Mathf.SmoothStep(0f, 1f, k);
             transform.localPosition = p;
+            Progress = k;
             return k;
         }
     }

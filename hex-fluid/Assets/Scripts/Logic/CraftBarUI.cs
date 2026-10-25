@@ -28,6 +28,9 @@ namespace HexFluid
         {
             if (placer == null) placer = FindObjectOfType<EdgeItemPlacer>();
             if (crafting == null) crafting = FindObjectOfType<ItemCrafting>();
+
+            // Recipe papers on the table replace this bar: hide it when there are any.
+            if (FindFirstObjectByType<CraftPaper>() != null) enabled = false;
         }
 
         private void OnGUI()

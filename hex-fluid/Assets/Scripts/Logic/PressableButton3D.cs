@@ -48,6 +48,9 @@ namespace HexFluid
         [Tooltip("Hook your start-the-game logic here in the inspector.")]
         public UnityEvent onClick = new UnityEvent();
 
+        [Tooltip("Keep working while a popup blocks the game's input (e.g. the main menu's own buttons).")]
+        public bool ignoreInputBlocker = false;
+
         /// <summary>Fires on a completed click (press + release over the button).</summary>
         public event Action Clicked;
 
@@ -73,7 +76,7 @@ namespace HexFluid
         {
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
 
-            IsHovered = !InputBlocker.Blocked && RaycastHitsSelf();   // a popup is open: can't be clicked through it
+            IsHovered = (ignoreInputBlocker || !InputBlocker.Blocked) && RaycastHitsSelf();   // a popup is open: can't be clicked through it
 
             // Press / release logic (classic button: down on press, click fires on release over it).
             if (LeftPressed() && IsHovered)

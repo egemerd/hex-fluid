@@ -55,6 +55,19 @@ namespace HexFluid
         [Tooltip("Seconds to wait after a loss before the level restarts (see the water hit the city first).")]
         [Min(0f)] public float restartDelay = 2f;
 
+        [Header("Sounds")]
+        [Tooltip("Played once when the level is solved.")]
+        public SoundSO solveSound;
+
+        [Tooltip("Played once when the level is failed, or restarted with R.")]
+        public SoundSO unsolveSound;
+
+        [Tooltip("Quiet background loop while the player builds (from the level drop-in until Start is pressed).")]
+        public SoundSO buildLoop;
+
+        [Tooltip("Played when the flood starts. Cut off when the level is solved or failed.")]
+        public SoundSO floodStartSound;
+
         [Header("Keys")]
         [Tooltip("R restarts the current level, Esc goes back to the first level.")]
         public bool keyboardShortcuts = true;
@@ -73,6 +86,7 @@ namespace HexFluid
         public event Action AllLevelsCompleted;
 
         private Coroutine _advance;
+        private bool _anyLevelLoaded;
 
         private void Awake()
         {
@@ -94,19 +108,25 @@ namespace HexFluid
         private void OnEnable()
         {
             if (board != null) board.LevelLoaded += OnLevelLoaded;
-            if (water != null) { water.WonEvent += OnWon; water.LostEvent += OnLost; }
+            if (water != null) { water.WonEvent += OnWon; water.LostEvent += OnLost; water.StageChanged += OnStageChanged; }
         }
 
         private void OnDisable()
         {
             if (board != null) board.LevelLoaded -= OnLevelLoaded;
-            if (water != null) { water.WonEvent -= OnWon; water.LostEvent -= OnLost; }
+            if (water != null) { water.WonEvent -= OnWon; water.LostEvent -= OnLost; water.StageChanged -= OnStageChanged; }
+            Sfx.StopLoop(buildLoop);
         }
 
         private void Update()
         {
             if (!keyboardShortcuts || levels.Count == 0 || InputBlocker.Blocked) return;
-            if (RestartPressed()) RestartLevel();
+            if (RestartPressed())
+            {
+                // A pending fail-restart already played its sound.
+                if (_advance == null) Sfx.Play(unsolveSound);
+                RestartLevel();
+            }
             else if (FirstLevelPressed()) LoadLevel(0);
         }
 
@@ -147,15 +167,41 @@ namespace HexFluid
 
         // ---- Events ------------------------------------------------------------
 
-        private void OnLevelLoaded(LevelData level) => LevelStarted?.Invoke(CurrentIndex, CurrentLevel);
+        private void OnLevelLoaded(LevelData level)
+        {
+            _anyLevelLoaded = true;
+            Sfx.PlayLoop(buildLoop);
+            LevelStarted?.Invoke(CurrentIndex, CurrentLevel);
+        }
+
+        /// <summary>The build loop runs until Start floods the board, then the riser takes over.</summary>
+        private void OnStageChanged(FloodStage stage)
+        {
+            switch (stage)
+            {
+                case FloodStage.Flooding:
+                    Sfx.StopLoop(buildLoop);
+                    Sfx.Play(floodStartSound);
+                    break;
+                case FloodStage.Calm:          // the level is changing (or restarting)
+                case FloodStage.Cloudburst:
+                    Sfx.Stop(floodStartSound);
+                    if (_anyLevelLoaded) Sfx.PlayLoop(buildLoop);   // stay quiet behind the main menu
+                    break;
+            }
+        }
 
         private void OnWon()
         {
+            Sfx.Stop(floodStartSound);
+            Sfx.Play(solveSound);
             if (autoAdvanceOnWin) After(nextLevelDelay, NextLevel);
         }
 
         private void OnLost()
         {
+            Sfx.Stop(floodStartSound);
+            Sfx.Play(unsolveSound);
             if (restartOnFail) After(restartDelay, RestartLevel);
         }
 

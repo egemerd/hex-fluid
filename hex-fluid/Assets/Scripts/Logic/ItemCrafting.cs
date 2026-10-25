@@ -25,6 +25,9 @@ namespace HexFluid
             if (inventory == null) inventory = FindObjectOfType<PlayerInventory>();
         }
 
+        /// <summary>Everything made but not placed yet: item -> how many.</summary>
+        public IReadOnlyDictionary<ItemDefinition, int> Stock => _owned;
+
         public int Owned(ItemDefinition def) =>
             def != null && _owned.TryGetValue(def, out var n) ? n : 0;
 

@@ -18,5 +18,21 @@ namespace HexFluid
         {
             if (sound != null && AudioManager.Instance != null) AudioManager.Instance.PlayAt(sound, worldPos);
         }
+
+        public static void Stop(SoundSO sound)
+        {
+            if (sound != null && AudioManager.Instance != null) AudioManager.Instance.Stop(sound);
+        }
+
+        /// <summary>Starts a looping sound (does nothing if it is already looping).</summary>
+        public static void PlayLoop(SoundSO sound)
+        {
+            if (sound != null && AudioManager.Instance != null) AudioManager.Instance.PlayLoop(sound);
+        }
+
+        public static void StopLoop(SoundSO sound)
+        {
+            if (sound != null && AudioManager.Instance != null) AudioManager.Instance.StopLoop(sound);
+        }
     }
 }

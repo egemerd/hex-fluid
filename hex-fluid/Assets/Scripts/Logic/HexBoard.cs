@@ -29,6 +29,9 @@ namespace HexFluid
         [Tooltip("Prefab shown on a flooded tile (e.g. a water plane). Optional.")]
         public GameObject waterOverlayPrefab;
 
+        [Tooltip("Build the level as soon as the game starts. A MainMenu turns this off and builds it when Play is clicked.")]
+        public bool buildOnStart = true;
+
         [Header("Spawn animation")]
         [Tooltip("Drop tiles in from above when the board builds (Play mode only).")]
         public bool dropIn = true;
@@ -99,7 +102,7 @@ namespace HexFluid
 
         void Start()
         {
-            if (level != null && Level == null) Build();
+            if (buildOnStart && level != null && Level == null) Build();
         }
 
         /// <summary>

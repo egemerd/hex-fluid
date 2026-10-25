@@ -39,7 +39,7 @@ namespace HexFluid
     ///
     /// Stage: the flood moves through FloodStage (Cloudburst -> Flooding ->
     /// Contained / CityFlooded) and announces each change on StageChanged. A
-    /// FloodStageBadge in the screen corner shows it; one is created automatically
+    /// FloodStageBadge written on the table shows it; one is created automatically
     /// if the scene has none.
     ///
     /// Setup:
@@ -85,7 +85,7 @@ namespace HexFluid
         public HexHarvester harvester;
 
         [Header("Stage badge")]
-        [Tooltip("Show the flood stage (Cloudburst, Flooding commenced...) as a wobbling sticker in a screen corner. Created automatically if the scene has no FloodStageBadge.")]
+        [Tooltip("Show the flood stage (Cloudburst, Flooding commenced...) etched onto the table beside the board. Created automatically if the scene has no FloodStageBadge.")]
         public bool showStageBadge = true;
 
         [Header("Per-tile indicator (old)")]
@@ -287,7 +287,9 @@ namespace HexFluid
             if (board != null && board.IsChangingLevel) return;  // between levels: nothing to flood yet
             if (Level == null)
             {
-                Debug.LogError("WaterSimulation: assign a HexBoard that has a LevelData.", this);
+                // A level is assigned but not built yet (e.g. still on the main menu): nothing to flood.
+                if (board == null || board.level == null)
+                    Debug.LogError("WaterSimulation: assign a HexBoard that has a LevelData.", this);
                 return;
             }
 
