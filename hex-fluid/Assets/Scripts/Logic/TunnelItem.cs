@@ -16,8 +16,9 @@ namespace HexFluid
     /// flows on normally. B itself is untouched: its own water flows across those
     /// edges as if the tunnel weren't there.
     ///
-    /// Placing: click inside the tile the tunnel starts from (A), near the edge to
-    /// the tile it goes under (B). It needs a tile on the far side (C).
+    /// Placing: click an edge. The tunnel runs down the screen from it: under the tile
+    /// below the edge (B), out at that tile's lower edge (EdgeItemPlacer turns it
+    /// that way). It needs a tile on the far side (C); with none down there it runs up.
     /// Default recipe: 2 Stone.
     ///
     /// Create via: Assets > Create > HexFluid > Items > Tunnel.

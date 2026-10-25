@@ -108,6 +108,7 @@ namespace HexFluid
             if (def == null) return;
             if (crafting == null || crafting.Owned(def) <= 0) return;   // nothing made to place
             if (!PickEdge(out var a, out var b)) return;
+            if (def is TunnelItem) RunDownScreen(def, ref a, ref b);
             if (items.IsForbidden(def, a, b)) { Deny(a, b); return; }
             if (!items.CanPlace(def, a, b)) return;          // an edge it needs is taken / off the board
 
@@ -117,6 +118,21 @@ namespace HexFluid
             crafting.Consume(def);
             Sfx.PlayAt(def.placeSound != null ? def.placeSound : placeSound, placed.view.transform.position);
             if (crafting.Owned(def) <= 0) Select(null);       // nothing left to place: back to harvesting
+        }
+
+        /// <summary>
+        /// A tunnel on the picked edge runs down the screen: under the tile below the
+        /// edge, coming out at that tile's lower edge, whichever side of the edge was
+        /// clicked. Only when there's no room that way (no tile beyond, or an edge
+        /// taken) does it run up instead.
+        /// </summary>
+        private void RunDownScreen(ItemDefinition def, ref HexCoord a, ref HexCoord b)
+        {
+            float screenA = cam.WorldToScreenPoint(BoardT.TransformPoint(a.ToWorld(HexSize))).y;
+            float screenB = cam.WorldToScreenPoint(BoardT.TransformPoint(b.ToWorld(HexSize))).y;
+            if (screenB <= screenA) return;                  // already heading down
+            if (!items.CanPlace(def, b, a) && items.CanPlace(def, a, b)) return;
+            (a, b) = (b, a);
         }
 
         /// <summary>The rules say no building on this edge: shake the screen so the player feels it.</summary>
