@@ -15,7 +15,8 @@ namespace HexFluid
     ///     Block stops it, Force funnels it across even if not downhill. A Force edge
     ///     only pushes water AWAY from the side it arrived on, never back over itself.
     ///     A fixed map wall always blocks (see ItemPlacementSystem).
-    ///   - It can't enter a resource tile.
+    ///   - It can't enter a stone tile, or a wood tile that was harvested. Unharvested
+    ///     wood floods like a normal tile (see ResourceRules).
     ///   - Entering a City (house) = LOSE, straight away.
     ///   - Water keeps spreading until no tile can take more. Then: if it reached every
     ///     Goal tile (and no city got flooded) = WIN, otherwise = LOSE (goal not reached).
@@ -76,6 +77,9 @@ namespace HexFluid
 
         [Tooltip("Placed items (barricades/bridges). Auto-found if empty. Optional.")]
         public ItemPlacementSystem items;
+
+        [Tooltip("Knows which resource tiles were harvested (harvested wood blocks the water). Auto-found if empty.")]
+        public HexHarvester harvester;
 
         [Header("Stage badge")]
         [Tooltip("Show the flood stage (Cloudburst, Flooding commenced...) as a wobbling sticker in a screen corner. Created automatically if the scene has no FloodStageBadge.")]
@@ -288,6 +292,7 @@ namespace HexFluid
             ClearWater();
             Level.BuildLookups();
             if (items == null) items = FindFirstObjectByType<ItemPlacementSystem>();
+            if (harvester == null) harvester = FindFirstObjectByType<HexHarvester>();
             ResetResult();
 
             int lastStep = PlanFlood();
@@ -455,7 +460,8 @@ namespace HexFluid
 
             var td = Level.GetTile(n);
             if (td == null) return;
-            if (td.resource != ResourceType.None) return;            // water can't enter resource tiles
+            bool harvested = harvester != null && harvester.IsHarvested(n);
+            if (ResourceRules.BlocksWater(td.resource, harvested)) return;  // stone, or harvested wood
 
             next.Add(n);
             if (!_cameFrom.TryGetValue(n, out var from)) _cameFrom[n] = from = new HashSet<HexCoord>();

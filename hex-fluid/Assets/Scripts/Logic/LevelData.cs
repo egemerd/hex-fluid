@@ -35,6 +35,10 @@ namespace HexFluid
         [Tooltip("How many tiles water advances per step (flood-fill rings).")]
         public int waterStepsPerTurn = 1;
 
+        [Header("Harvest")]
+        [Tooltip("Most resource tiles the player may harvest in this level. 0 = unlimited.")]
+        [Min(0)] public int maxHarvests = 0;
+
         // ---- Fast lookup built at load; not serialized ----
         private Dictionary<HexCoord, HexTileData> _tileLookup;
         private Dictionary<EdgeKey, EdgeState> _edgeLookup;

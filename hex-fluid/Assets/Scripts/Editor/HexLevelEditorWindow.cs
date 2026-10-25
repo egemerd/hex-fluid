@@ -44,6 +44,12 @@ namespace HexFluid.EditorTools
         private Vector2 pan = new Vector2(320, 260);
         private float cellSize = 26f; // pixels, editor-space hex radius
         private Vector2 scroll;
+
+        // Draw the grid the way the game camera sees the board, so left/right and
+        // up/down here match the game. Without it the grid is drawn +X right, +Z
+        // down, which is mirrored when the camera looks at the board from the +Z side.
+        private bool matchGameCamera = true;
+        private bool _flipX, _flipY;
         private readonly List<string> _problems = new();
 
         [MenuItem("Window/HexFluid/Level Editor")]
@@ -66,6 +72,7 @@ namespace HexFluid.EditorTools
             }
 
             DrawPaintControls();
+            UpdateViewFlip();
             DrawCanvas();
             HandleCanvasInput();
             DrawFooter();
@@ -127,6 +134,9 @@ namespace HexFluid.EditorTools
             if (GUILayout.Button("Recenter", GUILayout.Width(80)))
                 pan = new Vector2(position.width * 0.5f, position.height * 0.5f);
             EditorGUILayout.EndHorizontal();
+            matchGameCamera = EditorGUILayout.ToggleLeft(
+                new GUIContent("Match game camera", "Show the grid as the Main Camera sees the board, so what you paint on the left is on the left in the game."),
+                matchGameCamera);
             EditorGUILayout.EndVertical();
         }
 
@@ -138,7 +148,7 @@ namespace HexFluid.EditorTools
 
         private void DrawCanvas()
         {
-            _canvasRect = GUILayoutUtility.GetRect(position.width, position.height - 190);
+            _canvasRect = GUILayoutUtility.GetRect(position.width, position.height - 210);
             GUI.Box(_canvasRect, GUIContent.none);
 
             Handles.BeginGUI();
@@ -210,10 +220,34 @@ namespace HexFluid.EditorTools
         // Screen <-> hex mapping (editor-space, pixels)
         // ---------------------------------------------------------------
 
+        /// <summary>
+        /// Works out which way the game camera looks at the board: if the camera's
+        /// right points along the board's -X, the grid is drawn mirrored left/right;
+        /// if its up points along +Z, mirrored up/down. Uses the scene's Main Camera
+        /// and HexBoard; draws unflipped if either is missing.
+        /// </summary>
+        private void UpdateViewFlip()
+        {
+            _flipX = _flipY = false;
+            if (!matchGameCamera) return;
+
+            Camera cam = Camera.main;
+            if (cam == null) return;
+            var board = Object.FindFirstObjectByType<HexBoard>();
+            Transform space = board != null ? board.transform : null;
+
+            Vector3 right = space != null ? space.InverseTransformDirection(cam.transform.right) : cam.transform.right;
+            Vector3 up = space != null ? space.InverseTransformDirection(cam.transform.up) : cam.transform.up;
+            _flipX = right.x < 0f;   // board +X shows on the left of the screen
+            _flipY = up.z > 0f;      // board +Z shows towards the top (the canvas draws +Z downward)
+        }
+
         private Vector2 HexToScreen(HexCoord c)
         {
             float x = cellSize * (1.5f * c.q);
             float y = cellSize * (Mathf.Sqrt(3f) / 2f * c.q + Mathf.Sqrt(3f) * c.r);
+            if (_flipX) x = -x;
+            if (_flipY) y = -y;
             return new Vector2(_canvasRect.x + pan.x + x, _canvasRect.y + pan.y + y);
         }
 
@@ -221,6 +255,8 @@ namespace HexFluid.EditorTools
         {
             float lx = p.x - _canvasRect.x - pan.x;
             float ly = p.y - _canvasRect.y - pan.y;
+            if (_flipX) lx = -lx;
+            if (_flipY) ly = -ly;
             float qf = (2f / 3f * lx) / cellSize;
             float rf = (-1f / 3f * lx + Mathf.Sqrt(3f) / 3f * ly) / cellSize;
             return RoundHex(qf, rf);

@@ -26,6 +26,25 @@ namespace HexFluid
     }
 
     /// <summary>
+    /// How each resource treats the water. Add a case here when you add a resource.
+    ///   Stone: a solid rock. Water never enters it, harvested or not.
+    ///   Wood:  unharvested, the water floods it like a normal tile. Once harvested
+    ///          (the tile is gone) it blocks the water like a harvested stone.
+    /// </summary>
+    public static class ResourceRules
+    {
+        public static bool BlocksWater(ResourceType type, bool harvested)
+        {
+            switch (type)
+            {
+                case ResourceType.Stone: return true;
+                case ResourceType.Wood:  return harvested;
+                default:                 return false;
+            }
+        }
+    }
+
+    /// <summary>
     /// Pure data for one tile. This is what the level asset serializes and
     /// what the editor edits. No scene references live here — the runtime
     /// HexBoard turns this into a spawned object.

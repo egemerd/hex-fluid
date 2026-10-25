@@ -59,16 +59,16 @@ namespace HexFluid
         [Tooltip("Harvesting is only allowed while this is true.")]
         public bool harvestingActive = true;
 
-        [Tooltip("0 = unlimited. Otherwise the max number of tiles the player may harvest.")]
-        [Min(0)] public int maxHarvests = 0;
-
         [Tooltip("End the harvest phase automatically once every resource tile is harvested (or the limit is hit).")]
         public bool autoEndWhenDone = true;
 
         public bool HarvestingActive => harvestingActive;
         public int HarvestCount { get; private set; }
         public int ResourceTileCount { get; private set; }
-        public int HarvestsLeft => maxHarvests > 0 ? Mathf.Max(0, maxHarvests - HarvestCount) : int.MaxValue;
+        public int HarvestsLeft => MaxHarvests > 0 ? Mathf.Max(0, MaxHarvests - HarvestCount) : int.MaxValue;
+
+        /// <summary>The current level's harvest limit (set on the level asset). 0 = unlimited.</summary>
+        public int MaxHarvests => Level != null ? Level.maxHarvests : 0;
 
         /// <summary>Per harvest: (tile, resource type, amount added).</summary>
         public event Action<HexCoord, ResourceType, int> Harvested;
@@ -163,7 +163,7 @@ namespace HexFluid
         public bool CanHarvest(HexCoord c)
         {
             if (!harvestingActive) return false;
-            if (maxHarvests > 0 && HarvestCount >= maxHarvests) return false;
+            if (MaxHarvests > 0 && HarvestCount >= MaxHarvests) return false;
             if (_harvested.Contains(c)) return false;
             var t = Level != null ? Level.GetTile(c) : null;
             return t != null && t.resource != ResourceType.None && t.resourceAmount > 0;
@@ -171,7 +171,7 @@ namespace HexFluid
 
         public bool IsHarvestComplete()
         {
-            if (maxHarvests > 0 && HarvestCount >= maxHarvests) return true;
+            if (MaxHarvests > 0 && HarvestCount >= MaxHarvests) return true;
             if (Level == null || ResourceTileCount == 0) return false;
             foreach (var t in Level.tiles)
                 if (t.resource != ResourceType.None && !_harvested.Contains(t.coord))

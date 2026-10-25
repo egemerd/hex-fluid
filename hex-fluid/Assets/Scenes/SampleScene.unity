@@ -1488,7 +1488,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c56899e63040c1c4a8510a23a99df366, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HexFluid.HexBoard
-  level: {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
+  level: {fileID: 11400000, guid: 3fc01af323ad387438b8288c377e362c, type: 2}
   modelSet: {fileID: 11400000, guid: 056f536cb7703a64996f20835f9f8e8b, type: 2}
   waterOverlayPrefab: {fileID: 0}
   dropIn: 1
@@ -1559,7 +1559,6 @@ MonoBehaviour:
   hexSize: 1
   surfaceY: 0
   harvestingActive: 1
-  maxHarvests: 0
   autoEndWhenDone: 1
 --- !u!114 &731516371
 MonoBehaviour:
@@ -1612,6 +1611,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HexFluid.WaterSimulation
   board: {fileID: 731516367}
   items: {fileID: 0}
+  harvester: {fileID: 0}
   showStageBadge: 1
   showTileIndicators: 0
   waterPlanePrefab: {fileID: 6197171472498319190, guid: 3b29cba3664c5e744a8b7214cec0409f, type: 3}
@@ -1748,7 +1748,9 @@ MonoBehaviour:
   levels:
   - {fileID: 11400000, guid: e1b8808d3fe07c046afe9f3f326686b5, type: 2}
   - {fileID: 11400000, guid: 49e630fc992169b479d42aac5eaf99f4, type: 2}
-  startLevel: 0
+  - {fileID: 11400000, guid: 3fc01af323ad387438b8288c377e362c, type: 2}
+  - {fileID: 11400000, guid: 5b56b53ad972a154eb986a8802072a65, type: 2}
+  startLevel: 2
   autoAdvanceOnWin: 1
   nextLevelDelay: 1
   restartOnFail: 1
