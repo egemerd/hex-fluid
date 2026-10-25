@@ -178,4 +178,4 @@ MonoBehaviour:
   defaultTileModel: {fileID: 0}
   tileModels: []
   waterStepsPerTurn: 1
-  maxHarvests: 5
+  maxHarvests: 4

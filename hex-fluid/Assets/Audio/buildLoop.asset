@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SoundSO
   clips:
   - {fileID: 8300000, guid: e9f3896ee44646ef88a68443b1b7433c, type: 3}
-  volume: 0.25
+  volume: 0.158
   volumeVariation: 0
   pitch: 1
   pitchVariation: 0

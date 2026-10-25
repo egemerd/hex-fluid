@@ -17,5 +17,10 @@ MonoBehaviour:
   recipe:
   - resource: 1
     amount: 1
-  model: {fileID: 0}
+  model: {fileID: 6413375815116578664, guid: 80226da1fdf72cf4586bc222032be67d, type: 3}
   color: {r: 0.55, g: 0.35, b: 0.18, a: 1}
+  modelRotation: {x: 0, y: 0, z: 0}
+  modelOffset: {x: 0, y: 0, z: 0}
+  dropModel: {fileID: 0}
+  dropLandSound: {fileID: 0}
+  placeSound: {fileID: 0}

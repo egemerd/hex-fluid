@@ -36,7 +36,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 3
@@ -106,9 +106,9 @@ MonoBehaviour:
       q: 2
       r: -5
     modelIndex: -1
-    role: 0
-    resource: 0
-    resourceAmount: 0
+    role: 4
+    resource: 2
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 2
@@ -156,7 +156,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 1
@@ -164,7 +164,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 2
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 0
@@ -172,7 +172,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 1
@@ -180,7 +180,7 @@ MonoBehaviour:
     modelIndex: -1
     role: 4
     resource: 1
-    resourceAmount: 3
+    resourceAmount: 1
     customTag: 
   - coord:
       q: 6
@@ -202,4 +202,4 @@ MonoBehaviour:
   defaultTileModel: {fileID: 0}
   tileModels: []
   waterStepsPerTurn: 1
-  maxHarvests: 0
+  maxHarvests: 4

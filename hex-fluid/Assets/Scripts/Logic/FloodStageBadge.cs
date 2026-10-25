@@ -18,10 +18,13 @@ namespace HexFluid
     /// showing through). The caption is etched too - a carved dark edge under the
     /// letters - in its own muted chalk palette, one colour per stage.
     ///
-    /// It lies flat on the table and always turns to read upright from the camera.
+    /// It lies flat on the table and turns to read upright from the camera, or turns
+    /// with its placeholder ('spot', 'turnWithSpot').
     ///
-    /// Placement: on the table just above (on screen) the button that starts the water,
-    /// found automatically - or above whatever 'anchor' you give it. Without either it
+    /// Placement: give it a placeholder in 'spot' and it lies right there, at the
+    /// placeholder's height too. Otherwise on the table just above (on screen) the
+    /// button that starts the water, found automatically - or above whatever 'anchor'
+    /// you give it. Without either it
     /// sits beside the board ('followBoard'), or, with that off, exactly where this
     /// object is. Its height follows the table surface under it.
     /// WaterSimulation creates one automatically if the scene has none; add your own
@@ -48,7 +51,13 @@ namespace HexFluid
         public HexBoard board;
 
         [Header("Placement on the table")]
-        [Tooltip("Sit just above this object on screen. Empty = the button that starts the water (found automatically).")]
+        [Tooltip("Placeholder: the badge lies flat exactly where this object is, at its height too (the point between sticker and caption). Empty = placed by 'anchor' below.")]
+        public Transform spot;
+
+        [Tooltip("With a spot: ON = it turns with the placeholder (spin the placeholder around Y; its blue Z arrow is the top of the badge). OFF = it always reads upright from the camera.")]
+        public bool turnWithSpot = true;
+
+        [Tooltip("No spot: sit just above this object on screen. Empty = the button that starts the water (found automatically).")]
         public Transform anchor;
 
         [Tooltip("From the anchor's centre to the point between sticker and caption, in table units: X = towards the right of the screen, Y = towards the top.")]
@@ -175,14 +184,39 @@ namespace HexFluid
             Vector3 up = board != null ? board.transform.up : Vector3.up;
             ScreenAxes(up, out Vector3 right, out Vector3 screenUp);
 
-            Transform at = Anchor();
-            if (at != null)
-                transform.position = at.position + right * anchorOffset.x + screenUp * anchorOffset.y;
-            else if (followBoard && board != null)
-                transform.position = board.transform.position + right * boardOffset.x + screenUp * boardOffset.y;
+            if (spot != null)
+            {
+                _flat.position = spot.position;                          // your placeholder, its height as you set it
+            }
+            else
+            {
+                Transform at = Anchor();
+                if (at != null)
+                    transform.position = at.position + right * anchorOffset.x + screenUp * anchorOffset.y;
+                else if (followBoard && board != null)
+                    transform.position = board.transform.position + right * boardOffset.x + screenUp * boardOffset.y;
 
-            _flat.position = OnTable(transform.position, up) + up * heightOffset;
-            _flat.rotation = Quaternion.LookRotation(-up, screenUp);     // lying flat, reading upright from the camera
+                _flat.position = OnTable(transform.position, up) + up * heightOffset;
+            }
+            Vector3 top = screenUp;                                      // reading upright from the camera...
+            if (spot != null && turnWithSpot)
+            {
+                Vector3 spotTop = Vector3.ProjectOnPlane(spot.forward, up);
+                if (spotTop.sqrMagnitude > 1e-4f) top = spotTop.normalized; // ...or turned like your placeholder
+            }
+            _flat.rotation = Quaternion.LookRotation(-up, top);          // lying flat
+        }
+
+        /// <summary>Marks the placeholder in the Scene view, so you can see where the badge will lie.</summary>
+        private void OnDrawGizmos()
+        {
+            if (spot == null) return;
+            Vector3 top = Vector3.ProjectOnPlane(turnWithSpot ? spot.forward : Vector3.forward, Vector3.up);
+            if (top.sqrMagnitude < 1e-4f) top = Vector3.forward;
+            Gizmos.color = new Color(1f, 0.85f, 0.3f, 0.9f);
+            Gizmos.matrix = Matrix4x4.TRS(spot.position, Quaternion.LookRotation(top), Vector3.one);
+            Gizmos.DrawWireCube(new Vector3(0f, 0f, stickerSize * 0.5f), new Vector3(stickerSize, 0f, stickerSize));  // the sticker, above the point
+            Gizmos.DrawLine(Vector3.zero, new Vector3(0f, 0f, stickerSize * 1.2f));
         }
 
         /// <summary>
