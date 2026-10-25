@@ -47,6 +47,9 @@ namespace HexFluid
         [Tooltip("While this has a build item chosen, clicks place it instead of harvesting. Auto-found if empty.")]
         public EdgeItemPlacer placer;
 
+        [Tooltip("Pickaxes on the table: each harvest sends one to chop the tile, and the harvest lands on the chop. Auto-found if empty; none = harvest instantly.")]
+        public PickaxeRack pickaxes;
+
         [Header("Audio")]
         [Tooltip("Played when you click a resource tile and harvest it.")]
         public SoundSO harvestSound;
@@ -96,6 +99,7 @@ namespace HexFluid
             _boardT = BoardT;
             if (cam == null) cam = Camera.main;
             if (placer == null) placer = FindFirstObjectByType<EdgeItemPlacer>();
+            if (pickaxes == null) pickaxes = FindFirstObjectByType<PickaxeRack>();
 
             if (inventory == null)
             {
@@ -185,7 +189,11 @@ namespace HexFluid
 
         // ---- Harvesting -------------------------------------------------------
 
-        /// <summary>Harvest a specific tile. Also called by the click handler.</summary>
+        /// <summary>
+        /// Harvest a specific tile. Also called by the click handler. The tile is taken
+        /// (and counts toward the limit) right away; if there's a pickaxe on the table
+        /// it flies over and chops it first, and the harvest lands on that chop.
+        /// </summary>
         public bool TryHarvest(HexCoord c)
         {
             if (!CanHarvest(c)) return false;
@@ -194,17 +202,25 @@ namespace HexFluid
             int amount = Mathf.Max(1, t.resourceAmount);
             ResourceType type = t.resource;
 
-            inventory.Add(type, amount);
-            _harvested.Add(c);
+            _harvested.Add(c);           // reserved now: can't be clicked twice while the pickaxe flies
             HarvestCount++;
+            Changed?.Invoke();
 
-            Sfx.PlayAt(harvestSound, _boardT.TransformPoint(c.ToWorld(hexSize)));
+            if (pickaxes == null || !pickaxes.Strike(c, () => CompleteHarvest(c, type, amount)))
+                CompleteHarvest(c, type, amount);
+            return true;
+        }
+
+        /// <summary>The harvest actually happens: resources, sound, and Harvested (feedback, tile breaking).</summary>
+        private void CompleteHarvest(HexCoord c, ResourceType type, int amount)
+        {
+            inventory.Add(type, amount);
+            Sfx.PlayAt(harvestSound, BoardT.TransformPoint(c.ToWorld(hexSize)));
 
             Harvested?.Invoke(c, type, amount);
             Changed?.Invoke();
 
             if (autoEndWhenDone && IsHarvestComplete()) FinishHarvesting();
-            return true;
         }
 
         private void Update()
