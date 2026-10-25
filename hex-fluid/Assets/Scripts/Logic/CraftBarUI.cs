@@ -66,13 +66,22 @@ namespace HexFluid
                 y += buttonHeight + 6;
             }
 
-            GUI.Label(new Rect(x, y + 2, buttonWidth + 60, 40),
-                "Left-click an edge to place.\nRight-click to pick back up.", _btn);
+            // While building, clicks place instead of harvest; this puts the item away.
+            if (placer.Selected != null)
+            {
+                if (GUI.Button(new Rect(x, y, buttonWidth, 30), "Stop building (harvest)", _btn))
+                    placer.Select(null);
+                y += 30 + 6;
+            }
+
+            GUI.Label(new Rect(x, y + 2, buttonWidth + 60, 56),
+                "Click an item again to make another.\nLeft-click an edge to place.\nRight-click to pick back up.", _btn);
         }
 
         private void OnClick(ItemDefinition def, bool affordable)
         {
-            // Make one if we can; otherwise just arm what we already hold.
+            // Every click makes one more if you can pay for it (2 wood -> click twice -> 2
+            // barricades), and arms it. Out of resources it just arms what you hold.
             if (affordable) crafting.Craft(def);
             placer.Select(def);
         }

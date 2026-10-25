@@ -226,7 +226,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.32, y: 0.49067897, z: -7.28}
-  m_LocalScale: {x: 13.926078, y: 0.27977, z: 11.780941}
+  m_LocalScale: {x: 19.596777, y: 0.27977, z: 14.9323435}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1555,6 +1555,7 @@ MonoBehaviour:
   board: {fileID: 731516368}
   cam: {fileID: 330585545}
   inventory: {fileID: 0}
+  placer: {fileID: 0}
   harvestSound: {fileID: 11400000, guid: c8b4d9bcc8049f842aa817488a33e7cb, type: 2}
   hexSize: 1
   surfaceY: 0
@@ -1710,7 +1711,7 @@ MonoBehaviour:
   inventory: {fileID: 0}
   dropSet: {fileID: 11400000, guid: a5c67313340912f47b70b37b4a0a52a7, type: 2}
   table: {fileID: 32729155}
-  spawnAreaOffset: {x: 5.17, y: 0, z: 0}
+  spawnAreaOffset: {x: 6.5, y: 0, z: 0}
   spawnRadius: 0.81
   spawnHeight: 9.25
   fallSpeed: 11.5

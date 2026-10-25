@@ -64,7 +64,34 @@ namespace HexFluid
             if (cam == null) cam = Camera.main;
         }
 
-        public void Select(ItemDefinition def) => Selected = def;
+        /// <summary>
+        /// True while an item is armed: the player is building, so clicks don't harvest.
+        /// Stays true for the rest of the frame building stops in, so the click that
+        /// placed the last item doesn't also harvest the tile under it.
+        /// </summary>
+        public bool IsBuilding => Selected != null || Time.frameCount == _stoppedFrame;
+
+        private int _stoppedFrame = -1;
+
+        /// <summary>Arm an item for placing, or pass null to stop building.</summary>
+        public void Select(ItemDefinition def)
+        {
+            if (def == null && Selected != null) _stoppedFrame = Time.frameCount;
+            Selected = def;
+        }
+
+        private void OnEnable()
+        {
+            if (board != null) board.LevelLoaded += OnLevelLoaded;
+        }
+
+        private void OnDisable()
+        {
+            if (board != null) board.LevelLoaded -= OnLevelLoaded;
+        }
+
+        // A new level starts with nothing armed (the stock is emptied too).
+        private void OnLevelLoaded(LevelData level) => Select(null);
 
         private void Update()
         {
@@ -89,6 +116,7 @@ namespace HexFluid
 
             crafting.Consume(def);
             Sfx.PlayAt(def.placeSound != null ? def.placeSound : placeSound, placed.view.transform.position);
+            if (crafting.Owned(def) <= 0) Select(null);       // nothing left to place: back to harvesting
         }
 
         /// <summary>The rules say no building on this edge: shake the screen so the player feels it.</summary>

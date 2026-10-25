@@ -44,6 +44,9 @@ namespace HexFluid
         [Tooltip("Where harvested resources go. Empty = one is found/added on this object.")]
         public PlayerInventory inventory;
 
+        [Tooltip("While this has a build item chosen, clicks place it instead of harvesting. Auto-found if empty.")]
+        public EdgeItemPlacer placer;
+
         [Header("Audio")]
         [Tooltip("Played when you click a resource tile and harvest it.")]
         public SoundSO harvestSound;
@@ -92,6 +95,7 @@ namespace HexFluid
             if (hexBoard == null) hexBoard = FindFirstObjectByType<HexBoard>();
             _boardT = BoardT;
             if (cam == null) cam = Camera.main;
+            if (placer == null) placer = FindFirstObjectByType<EdgeItemPlacer>();
 
             if (inventory == null)
             {
@@ -206,6 +210,7 @@ namespace HexFluid
         private void Update()
         {
             if (!harvestingActive || InputBlocker.Blocked) return;
+            if (placer != null && placer.IsBuilding) return;   // a build item is chosen: the click is for placing
             if (cam == null) { cam = Camera.main; if (cam == null) return; }
             _boardT = BoardT;
 
