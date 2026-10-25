@@ -7,18 +7,25 @@ namespace HexFluid
     public class PlacedItem
     {
         public ItemDefinition def;
-        public HexCoord a, b;   // the two tiles the edge sits between
-        public GameObject view;
+        public HexCoord a, b;   // the edge the player placed it on ('a' = the tile they clicked in)
+        public readonly List<EdgePair> edges = new List<EdgePair>();     // every edge it covers (its footprint)
+        public readonly List<GameObject> views = new List<GameObject>(); // one model per covered edge
+
+        /// <summary>The model on the edge it was placed on.</summary>
+        public GameObject view => views.Count > 0 ? views[0] : null;
     }
 
     /// <summary>
     /// Holds every placed item and answers the questions the water asks about an
-    /// edge (blocked? forced?). The water never knows about specific item types —
-    /// it just asks these two methods, which defer to each item's own logic. So a
-    /// new item type needs no changes here.
+    /// edge (blocked? forced? where to?). The water never knows about specific item
+    /// types — it just asks GetEdgeFlow / GetFlowTarget, which defer to each item's
+    /// own logic. So a new item type needs no changes here.
+    ///
+    /// An item may cover more than one edge (its footprint, e.g. a tunnel's entrance
+    /// and exit). It's then found from any of them, and picking it up removes all.
     ///
     /// Put it on your board object (or assign 'board'). The placer calls PlaceEdge;
-    /// the water calls IsEdgeBlocked / IsEdgeForced.
+    /// the water calls GetEdgeFlow / GetFlowTarget.
     /// </summary>
     public class ItemPlacementSystem : MonoBehaviour
     {
@@ -33,13 +40,15 @@ namespace HexFluid
         public bool blockAroundSources = true;
 
         private readonly Dictionary<EdgeKey, PlacedItem> _edgeItems = new Dictionary<EdgeKey, PlacedItem>();
+        private readonly List<PlacedItem> _items = new List<PlacedItem>();
+        private readonly List<EdgePair> _footprint = new List<EdgePair>();   // scratch
         private Transform _root;
 
         private LevelData Level => board != null ? board.Level : null;
         private Transform BoardT => board != null ? board.transform : transform;
         private float HexSize => Level != null ? Level.hexSize : 1f;
 
-        public IEnumerable<PlacedItem> Items => _edgeItems.Values;
+        public IEnumerable<PlacedItem> Items => _items;
 
         private void Awake()
         {
@@ -67,9 +76,11 @@ namespace HexFluid
         /// <summary>The level is leaving: placed items fly up with the tiles (and destroy themselves).</summary>
         private void FlyAwayAll()
         {
-            foreach (var p in _edgeItems.Values)
-                if (p.view) p.view.AddComponent<TileRiseAnimator>().Play(board.riseHeight, Random.Range(0f, board.riseStagger), board.riseDuration);
+            foreach (var p in _items)
+                foreach (var v in p.views)
+                    if (v) v.AddComponent<TileRiseAnimator>().Play(board.riseHeight, Random.Range(0f, board.riseStagger), board.riseDuration);
             _edgeItems.Clear();
+            _items.Clear();
         }
 
         private void EnsureRoot()
@@ -86,6 +97,7 @@ namespace HexFluid
         public ItemDefinition EdgeItemDef(HexCoord a, HexCoord b) =>
             _edgeItems.TryGetValue(EdgeKey.Between(a, b), out var p) ? p.def : null;
 
+        /// <summary>Can a single edge take an item: both tiles exist, neighbours, allowed, and free?</summary>
         public bool CanPlaceEdge(HexCoord a, HexCoord b)
         {
             if (Level == null) return false;
@@ -95,6 +107,17 @@ namespace HexFluid
             return !_edgeItems.ContainsKey(EdgeKey.Between(a, b)); // one item per edge
         }
 
+        /// <summary>Can 'def' be placed on a->b: is every edge it would cover free and allowed?</summary>
+        public bool CanPlace(ItemDefinition def, HexCoord a, HexCoord b)
+        {
+            if (def == null || def.placement != ItemPlacement.Edge) return false;
+            Footprint(def, a, b);
+            if (_footprint.Count == 0) return false;
+            foreach (var e in _footprint)
+                if (!CanPlaceEdge(e.from, e.to)) return false;
+            return true;
+        }
+
         /// <summary>
         /// True if the rules forbid building on this edge at all (not just "taken"):
         /// it touches a Source tile, where the water starts.
@@ -102,45 +125,66 @@ namespace HexFluid
         public bool IsEdgeForbidden(HexCoord a, HexCoord b) =>
             blockAroundSources && Level != null && (IsSource(a) || IsSource(b));
 
+        /// <summary>True if a rule forbids any edge 'def' would cover when placed on a->b.</summary>
+        public bool IsForbidden(ItemDefinition def, HexCoord a, HexCoord b)
+        {
+            if (def == null) return IsEdgeForbidden(a, b);
+            Footprint(def, a, b);
+            foreach (var e in _footprint)
+                if (IsEdgeForbidden(e.from, e.to)) return true;
+            return false;
+        }
+
         private bool IsSource(HexCoord c)
         {
             var t = Level.GetTile(c);
             return t != null && t.role == TileRole.Source;
         }
 
+        private void Footprint(ItemDefinition def, HexCoord a, HexCoord b)
+        {
+            _footprint.Clear();
+            def.GetFootprint(a, b, _footprint);
+        }
+
         public PlacedItem PlaceEdge(ItemDefinition def, HexCoord a, HexCoord b)
         {
-            if (def == null || def.placement != ItemPlacement.Edge) return null;
-            if (!CanPlaceEdge(a, b)) return null;
+            if (!CanPlace(def, a, b)) return null;
             EnsureRoot();
 
             var p = new PlacedItem { def = def, a = a, b = b };
-            GetEdgePose(a, b, out var pos, out var rot);
-            p.view = def.model != null ? Instantiate(def.model, _root) : MakeBar(def, _root);
-            p.view.transform.SetPositionAndRotation(pos, rot);
-            p.view.name = $"{def.DisplayName} {a}-{b}";
-
-            _edgeItems[EdgeKey.Between(a, b)] = p;
+            p.edges.AddRange(_footprint);                        // filled by CanPlace
+            foreach (var e in p.edges)
+            {
+                GetEdgePose(e.from, e.to, out var pos, out var rot);
+                var view = def.model != null ? Instantiate(def.model, _root) : MakeBar(def, _root);
+                view.transform.SetPositionAndRotation(pos, rot);
+                view.name = $"{def.DisplayName} {e.from}-{e.to}";
+                p.views.Add(view);
+                _edgeItems[e.Key] = p;
+            }
+            _items.Add(p);
             return p;
         }
 
+        /// <summary>Removes the item on this edge, with every other edge it covers.</summary>
         public void RemoveEdge(HexCoord a, HexCoord b)
         {
-            var key = EdgeKey.Between(a, b);
-            if (_edgeItems.TryGetValue(key, out var p))
-            {
-                if (p.view) DestroySafe(p.view);
-                _edgeItems.Remove(key);
-            }
+            if (!_edgeItems.TryGetValue(EdgeKey.Between(a, b), out var p)) return;
+            foreach (var v in p.views) if (v) DestroySafe(v);
+            foreach (var e in p.edges) _edgeItems.Remove(e.Key);
+            _items.Remove(p);
         }
 
         public void ClearAll()
         {
-            foreach (var p in _edgeItems.Values) if (p.view) DestroySafe(p.view);
+            foreach (var p in _items)
+                foreach (var v in p.views) if (v) DestroySafe(v);
             _edgeItems.Clear();
+            _items.Clear();
         }
 
-        // ---- Water query (the only thing the simulation needs) ----------------
+        // ---- Water queries (all the simulation needs) -------------------------
 
         /// <summary>
         /// What the item on this edge (if any) does to water crossing it. The water
@@ -149,12 +193,21 @@ namespace HexFluid
         /// </summary>
         public EdgeFlow GetEdgeFlow(HexCoord from, HexCoord to) =>
             _edgeItems.TryGetValue(EdgeKey.Between(from, to), out var p)
-                ? p.def.GetEdgeFlow(from, to)
+                ? p.def.GetEdgeFlow(p, from, to)
                 : EdgeFlow.Default;
+
+        /// <summary>
+        /// Where water forced across this edge from 'from' ends up: normally 'to', the
+        /// neighbour; an item like a tunnel can send it further.
+        /// </summary>
+        public HexCoord GetFlowTarget(HexCoord from, HexCoord to) =>
+            _edgeItems.TryGetValue(EdgeKey.Between(from, to), out var p)
+                ? p.def.GetFlowTarget(p, from, to)
+                : to;
 
         // ---- Visuals ----------------------------------------------------------
 
-        /// <summary>World pose for an item on the edge between a and b (bar spans the edge).</summary>
+        /// <summary>World pose for an item on the edge between a and b (bar spans the edge, facing a->b).</summary>
         public void GetEdgePose(HexCoord a, HexCoord b, out Vector3 pos, out Quaternion rot)
         {
             Vector3 pa = a.ToWorld(HexSize, itemYOffset);

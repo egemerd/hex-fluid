@@ -14,6 +14,9 @@ namespace HexFluid
     ///   - What an item does to an edge comes from the item itself (GetEdgeFlow):
     ///     Block stops it, Force funnels it across even if not downhill. A Force edge
     ///     only pushes water AWAY from the side it arrived on, never back over itself.
+    ///     Where forced water lands also comes from the item (GetFlowTarget): the
+    ///     neighbour across the edge, or further for a tunnel, which skips the tile
+    ///     in between.
     ///     A fixed map wall always blocks (see ItemPlacementSystem).
     ///   - It can't enter a stone tile, or a wood tile that was harvested. Unharvested
     ///     wood floods like a normal tile (see ResourceRules).
@@ -416,9 +419,9 @@ namespace HexFluid
 
             foreach (var cur in _flooded)
             {
-                // First, does this tile have any bridge (Force) edges? If so, the
-                // water is funnelled: it goes ONLY through the bridge(s), and the
-                // tile's other directions are cut off.
+                // First, does this tile have any bridge / tunnel (Force) edges? If so,
+                // the water is funnelled: it goes ONLY through them, and the tile's
+                // other directions are cut off.
                 List<HexCoord> bridged = null;
                 for (int d = 0; d < 6; d++)
                 {
@@ -426,15 +429,15 @@ namespace HexFluid
                     if (FlowAcross(cur, n) == EdgeFlow.Force)
                     {
                         if (bridged == null) bridged = new List<HexCoord>();
-                        bridged.Add(n);
+                        bridged.Add(FlowTarget(cur, n));        // the neighbour, or a tunnel's far end
                     }
                 }
 
                 if (bridged != null)
                 {
-                    // Funnel: only the bridged edges, and they ignore the downhill rule.
-                    foreach (var n in bridged)
-                        Consider(cur, n, next, ignoreDownhill: true);
+                    // Funnel: only the forced edges, and they ignore the downhill rule.
+                    foreach (var target in bridged)
+                        Consider(cur, target, next, ignoreDownhill: true);
                 }
                 else
                 {
@@ -469,16 +472,20 @@ namespace HexFluid
         }
 
         /// <summary>
-        /// What the item on the edge cur->n does to water leaving cur. The edge the water
-        /// came in through is ignored, so a bridge carries water across once and the
-        /// tile on the far side then flows on normally instead of pushing it back.
+        /// What the item on the edge cur->n does to water leaving cur. An edge that leads
+        /// back to where the water came from is ignored, so a bridge (or tunnel) carries
+        /// water across once and the tile on the far side then flows on normally instead
+        /// of pushing it back.
         /// </summary>
         private EdgeFlow FlowAcross(HexCoord cur, HexCoord n)
         {
             if (items == null) return EdgeFlow.Default;
-            if (_cameFrom.TryGetValue(cur, out var from) && from.Contains(n)) return EdgeFlow.Default;
+            if (_cameFrom.TryGetValue(cur, out var from) && from.Contains(FlowTarget(cur, n))) return EdgeFlow.Default;
             return items.GetEdgeFlow(cur, n);
         }
+
+        /// <summary>Where water forced across cur->n lands: n, or further (a tunnel's far end).</summary>
+        private HexCoord FlowTarget(HexCoord cur, HexCoord n) => items != null ? items.GetFlowTarget(cur, n) : n;
 
         /// <summary>True if 'to' is further along the flow direction than 'from'.</summary>
         private bool IsDownhill(HexCoord from, HexCoord to)
@@ -561,12 +568,9 @@ namespace HexFluid
         private Vector2 FlowOf(HexCoord cur)
         {
             Vector3 sum = Vector3.zero;
-            for (int d = 0; d < 6; d++)
-            {
-                var n = cur.Neighbor(d);
-                if (_cameFrom.TryGetValue(n, out var from) && from.Contains(cur))
-                    sum += n.ToWorld(HexSize) - cur.ToWorld(HexSize);
-            }
+            foreach (var kv in _cameFrom)                            // every tile this one feeds (a tunnel's may be 2 away)
+                if (kv.Value.Contains(cur))
+                    sum += (kv.Key.ToWorld(HexSize) - cur.ToWorld(HexSize)).normalized;
 
             Vector2 dir = new Vector2(sum.x, sum.z);
             if (dir.sqrMagnitude < 1e-6f && _cameFrom.TryGetValue(cur, out var inflow))

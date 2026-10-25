@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2fad786c99da8624aa3ea412db6ab647, type: 3}
+  m_Name: Tunnel
+  m_EditorClassIdentifier: Assembly-CSharp::HexFluid.TunnelItem
+  displayName: Tunnel
+  placement: 0
+  recipe:
+  - resource: 2
+    amount: 1
+  - resource: 1
+    amount: 1
+  model: {fileID: 9193647764036009674, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
+  color: {r: 0.35, g: 0.33, b: 0.32, a: 1}
+  placeSound: {fileID: 11400000, guid: 351ec10f44ba97b4786808e486b26c8c, type: 2}

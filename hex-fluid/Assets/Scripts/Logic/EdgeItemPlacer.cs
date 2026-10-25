@@ -108,8 +108,8 @@ namespace HexFluid
             if (def == null) return;
             if (crafting == null || crafting.Owned(def) <= 0) return;   // nothing made to place
             if (!PickEdge(out var a, out var b)) return;
-            if (items.IsEdgeForbidden(a, b)) { Deny(a, b); return; }
-            if (!items.CanPlaceEdge(a, b)) return;
+            if (items.IsForbidden(def, a, b)) { Deny(a, b); return; }
+            if (!items.CanPlace(def, a, b)) return;          // an edge it needs is taken / off the board
 
             var placed = items.PlaceEdge(def, a, b);
             if (placed == null) return;

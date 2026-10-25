@@ -182,15 +182,23 @@ namespace HexFluid
         /// When the front reaches p: the arrival of the tile it flows in from plus the
         /// distance from that tile's centre, in tile spacings. Continuous across tiles,
         /// so the front is one smooth curve.
+        ///
+        /// A parent further than a neighbour away fed this tile through a tunnel: the
+        /// water comes out of the tunnel mouth next to this tile, so it's measured from
+        /// one tile spacing back towards the parent instead of across the skipped tile.
         /// </summary>
         private static float ArrivalAt(Vector2 p, TileFlow tile, Dictionary<HexCoord, TileFlow> byCoord, float hexSize)
         {
             if (tile.parents == null || tile.parents.Length == 0) return SourceArrival;   // a source: wet from the start
             float best = float.MaxValue;
+            Vector2 own = Center(tile.coord, hexSize);
             foreach (var parent in tile.parents)
             {
                 if (!byCoord.TryGetValue(parent, out var pt)) continue;
-                float d = Vector2.Distance(p, Center(parent, hexSize)) / hexSize * InvSqrt3;
+                Vector2 from = Center(parent, hexSize);
+                if (parent.DistanceTo(tile.coord) > 1)                                    // through a tunnel
+                    from = own + (from - own).normalized * (hexSize / InvSqrt3);        // one tile spacing back
+                float d = Vector2.Distance(p, from) / hexSize * InvSqrt3;
                 best = Mathf.Min(best, pt.arrival + d);
             }
             return best < float.MaxValue ? best : tile.arrival;

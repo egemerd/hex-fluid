@@ -58,5 +58,38 @@ namespace HexFluid
         /// Override this per item. Default = no effect.
         /// </summary>
         public virtual EdgeFlow GetEdgeFlow(HexCoord from, HexCoord to) => EdgeFlow.Default;
+
+        // ---- For items that cover more than one edge (e.g. a tunnel) -----------
+        // Simple items ignore everything below: they cover the edge they're placed on,
+        // and water crossing them lands on the neighbour across it.
+
+        /// <summary>
+        /// The edges this item covers when the player places it on the edge a->b
+        /// ('a' = the tile they clicked in). Each pair is (outside tile, tile it faces);
+        /// the model is shown on every one. Default: just a->b.
+        /// </summary>
+        public virtual void GetFootprint(HexCoord a, HexCoord b, List<EdgePair> edges) => edges.Add(new EdgePair(a, b));
+
+        /// <summary>
+        /// Like GetEdgeFlow(from, to), but knowing exactly where this item was placed.
+        /// Override when the answer depends on that (a tunnel's two ends act differently
+        /// from the tile in its middle). Default: GetEdgeFlow(from, to).
+        /// </summary>
+        public virtual EdgeFlow GetEdgeFlow(PlacedItem placed, HexCoord from, HexCoord to) => GetEdgeFlow(from, to);
+
+        /// <summary>
+        /// Where water that a Force edge sends from 'from' towards 'to' ends up.
+        /// Default: 'to', the neighbour across the edge. A tunnel sends it further.
+        /// </summary>
+        public virtual HexCoord GetFlowTarget(PlacedItem placed, HexCoord from, HexCoord to) => to;
+    }
+
+    /// <summary>An edge between two neighbouring tiles, with a direction (from -> to).</summary>
+    [Serializable]
+    public struct EdgePair
+    {
+        public HexCoord from, to;
+        public EdgePair(HexCoord from, HexCoord to) { this.from = from; this.to = to; }
+        public EdgeKey Key => EdgeKey.Between(from, to);
     }
 }
