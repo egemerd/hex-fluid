@@ -4820,6 +4820,43 @@ MonoBehaviour:
   riseDuration: 0.45
   riseStagger: 0.15
   levelDelay: 0.1
+  dropInOnPlay:
+  - name: Book
+    pieces:
+    - {fileID: 827512922}
+  - name: Watch
+    pieces:
+    - {fileID: 1471577620}
+    - {fileID: 1881745656}
+  - name: Paper 1
+    pieces:
+    - {fileID: 456506992}
+  - name: Paper 2
+    pieces:
+    - {fileID: 642112352}
+  - name: Paper 3
+    pieces:
+    - {fileID: 341724734}
+  - name: Candle 1
+    pieces:
+    - {fileID: 698991765775124182}
+    - {fileID: 1555905542}
+  - name: Candle 2
+    pieces:
+    - {fileID: 1446440018}
+    - {fileID: 989097690}
+  - name: Candle 3
+    pieces:
+    - {fileID: 1373467140}
+    - {fileID: 600846838849623447}
+  - name: Skull candle
+    pieces:
+    - {fileID: 1439883156}
+    - {fileID: 304962937}
+  dropHeight: 14
+  dropDuration: 0.9
+  dropStagger: 0.15
+  levelOverlap: 0.3
   panel: {fileID: 0}
   playButton: {fileID: 0}
   quitButton: {fileID: 0}
@@ -5126,6 +5163,11 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 38b48f42d55b5eb4d84f0331503bec1d, type: 3}
   m_PrefabInstance: {fileID: 1435493165}
   m_PrefabAsset: {fileID: 0}
+--- !u!4 &1439883156 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 65d78e5999ffd3440a479c00b0c9d7c5, type: 3}
+  m_PrefabInstance: {fileID: 840993956}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1443221993
 GameObject:
   m_ObjectHideFlags: 0
@@ -5364,6 +5406,11 @@ Transform:
   - {fileID: 1615142786}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1471577620 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1548277c22a1d724e9dec7576c3f3b1f, type: 3}
+  m_PrefabInstance: {fileID: 675590248}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1555624883
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -24,12 +24,24 @@ namespace HexFluid
     ///     Start button; a Collider is needed), and assign them to 'play3D' / 'quit3D'.
     ///     Their onClick needs nothing, this hooks them up.
     ///   - Anything else that belongs to the menu (a title sign...) goes in 'alsoFlyAway'.
+    ///   - Table props that shouldn't be there yet (book, watch, papers, candles...) go
+    ///     in 'dropInOnPlay', one group per prop. They're hidden while the menu is up
+    ///     and fall onto the table after it's gone, before the level. Pieces in one
+    ///     group fall together (a candle and its flame).
     ///
     /// Without 3D buttons it falls back to on-screen Play / Quit buttons (built for you,
     /// or your own Canvas panel + Buttons assigned below).
     /// </summary>
     public class MainMenu : MonoBehaviour
     {
+        /// <summary>Pieces that fall onto the table together on Play.</summary>
+        [Serializable]
+        public class DropGroup
+        {
+            public string name;
+            public List<Transform> pieces = new List<Transform>();
+        }
+
         [Header("3D buttons on the table")]
         public PressableButton3D play3D;
         public PressableButton3D quit3D;
@@ -56,6 +68,21 @@ namespace HexFluid
 
         [Tooltip("Extra pause after the menu is gone, before the level drops in.")]
         [Min(0f)] public float levelDelay = 0.1f;
+
+        [Header("Drop in (on Play)")]
+        [Tooltip("Hidden while the menu is up; fall onto the table after it's gone, before the level.")]
+        public List<DropGroup> dropInOnPlay = new List<DropGroup>();
+
+        public float dropHeight = 14f;
+
+        [Tooltip("How long each fall takes. They come in fast and slow down to settle, no bounce.")]
+        [Min(0.01f)] public float dropDuration = 0.9f;
+
+        [Tooltip("Delay between one group starting to fall and the next.")]
+        [Min(0f)] public float dropStagger = 0.15f;
+
+        [Tooltip("Start the level drop this long before the last prop lands (0 = after it lands).")]
+        [Min(0f)] public float levelOverlap = 0.3f;
 
         [Header("On-screen fallback (only without 3D buttons)")]
         [Tooltip("Shown while the menu is open, hidden on Play. Empty = built for you.")]
@@ -112,7 +139,11 @@ namespace HexFluid
                 panel.SetActive(false);
             }
 
-            if (showOnStart) Show();
+            if (showOnStart)
+            {
+                Show();
+                SetDropInActive(false);                          // not on the table yet
+            }
             else HideMenuObjects();
         }
 
@@ -148,6 +179,9 @@ namespace HexFluid
             if (!Uses3D && panel != null) panel.SetActive(false);
             if (wait + levelDelay > 0f) yield return new WaitForSeconds(wait + levelDelay);
 
+            float props = DropIn();
+            if (props > 0f) yield return new WaitForSeconds(Mathf.Max(0f, props - levelOverlap));
+
             InputBlocker.Unblock(this);
             if (board != null && board.Level == null && board.level != null) board.Build();   // the level drops in
         }
@@ -169,6 +203,43 @@ namespace HexFluid
                 longest = Mathf.Max(longest, delay + riseDuration);
             }
             return longest;
+        }
+
+        /// <summary>Shows the props and drops them in, one group after another. Returns how long until they've landed.</summary>
+        private float DropIn()
+        {
+            float longest = 0f;
+            float delay = 0f;
+            foreach (var group in dropInOnPlay)
+            {
+                if (group == null) continue;
+                foreach (var t in group.pieces)
+                {
+                    if (t == null) continue;
+                    t.gameObject.SetActive(true);
+                    var buttons = t.GetComponentsInChildren<PressableButton3D>();
+                    foreach (var b in buttons) b.enabled = false;  // it moves Y itself
+                    t.gameObject.AddComponent<TileDropAnimator>().Play(t.localPosition, dropHeight, delay, dropDuration, false);  // ease-out: fast, then settles
+                    if (buttons.Length > 0) StartCoroutine(EnableAfter(buttons, delay + dropDuration));
+                }
+                longest = delay + dropDuration;
+                delay += dropStagger;
+            }
+            return longest;
+        }
+
+        private static IEnumerator EnableAfter(PressableButton3D[] buttons, float seconds)
+        {
+            yield return new WaitForSeconds(seconds);
+            foreach (var b in buttons) if (b != null) b.enabled = true;
+        }
+
+        private void SetDropInActive(bool active)
+        {
+            foreach (var group in dropInOnPlay)
+                if (group != null)
+                    foreach (var t in group.pieces)
+                        if (t != null) t.gameObject.SetActive(active);
         }
 
         private void HideMenuObjects()
