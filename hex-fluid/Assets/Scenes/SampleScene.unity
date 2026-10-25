@@ -2751,7 +2751,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ca93b560934229b4f9ef1647da633e6e, type: 2}
   - {fileID: 11400000, guid: 2ffcfe72ada0eeb4b92adc9fbd253ebb, type: 2}
   - {fileID: 11400000, guid: 9ce1a6666fb5d5f498b2a35fb37be4a8, type: 2}
-  startLevel: 0
+  startLevel: 2
   autoAdvanceOnWin: 1
   nextLevelDelay: 1
   restartOnFail: 1
@@ -2759,7 +2759,7 @@ MonoBehaviour:
   solveSound: {fileID: 11400000, guid: 3aad03cbdaae4a61a032843461ec785a, type: 2}
   unsolveSound: {fileID: 11400000, guid: 3f4f5c787f294b2e8d45eb4e5e33472e, type: 2}
   buildLoop: {fileID: 11400000, guid: 096437785ffa4d25a5620bc94800e9f6, type: 2}
-  floodStartSound: {fileID: 11400000, guid: af1f42f27fcc490a9809b6d7b39f679e, type: 2}
+  floodStartSound: {fileID: 0}
   keyboardShortcuts: 1
   resetInventoryEachLevel: 1
 --- !u!114 &731516380
