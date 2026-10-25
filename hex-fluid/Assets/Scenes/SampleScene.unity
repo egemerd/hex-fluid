@@ -1811,7 +1811,7 @@ MonoBehaviour:
   inventory: {fileID: 0}
   crafting: {fileID: 0}
   levels:
-  - {fileID: 11400000, guid: 595f1b883f194c84982cd328bd840290, type: 2}
+  - {fileID: 11400000, guid: ca93b560934229b4f9ef1647da633e6e, type: 2}
   - {fileID: 11400000, guid: 5b56b53ad972a154eb986a8802072a65, type: 2}
   - {fileID: 11400000, guid: 2a5cbfafc3630514db372f1218ccdc43, type: 2}
   - {fileID: 11400000, guid: 5b56b53ad972a154eb986a8802072a65, type: 2}
@@ -1837,7 +1837,7 @@ MonoBehaviour:
   board: {fileID: 731516367}
   pickaxePrefab: {fileID: 8579473153825241761, guid: cfe71de118d02be4c88d762f51b96ba2, type: 3}
   rackAnchor: {fileID: 2107133924}
-  spacing: 0.7
+  spacing: 0.94
   randomYaw: 20
   dropDelay: 0.5
   dropHeight: 6
@@ -5477,63 +5477,6 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!1001 &2081012347073517812
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 2.51432
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.63056
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -9.7265
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8716614063559968476, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 9193647764036009674, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
-      propertyPath: m_Name
-      value: TunnelModel
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 7351a44e725090f41ae0c1b81ce7b153, type: 3}
 --- !u!23 &2353874307261146707
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -6045,4 +5988,3 @@ SceneRoots:
   - {fileID: 1843075693}
   - {fileID: 1555624883}
   - {fileID: 2107133924}
-  - {fileID: 2081012347073517812}
