@@ -8,7 +8,7 @@ namespace HexFluid
     /// <summary>
     /// A wobbling sticker in a screen corner that announces the flood stage:
     /// "Cloudburst!" when the source wells up, "Flooding commenced" when the water
-    /// runs, then "Flood contained!" or "City flooded!". It listens to
+    /// runs, then "Goal reached!", "City flooded!" or "Goal not reached!". It listens to
     /// WaterSimulation.StageChanged and pops in again on every change.
     ///
     /// Self-contained: it builds its own overlay canvas, so it needs no scene setup.
@@ -54,8 +54,9 @@ namespace HexFluid
             new StageLook { stage = FloodStage.Calm,        label = "",                   labelColor = Color.white },
             new StageLook { stage = FloodStage.Cloudburst,  label = "Cloudburst!",        labelColor = new Color(0.78f, 0.92f, 1f) },
             new StageLook { stage = FloodStage.Flooding,    label = "Flooding commenced", labelColor = new Color(0.62f, 0.86f, 1f) },
-            new StageLook { stage = FloodStage.Contained,   label = "Flood contained!",   labelColor = new Color(0.62f, 1f, 0.72f) },
+            new StageLook { stage = FloodStage.Contained,   label = "Goal reached!",      labelColor = new Color(0.62f, 1f, 0.72f) },
             new StageLook { stage = FloodStage.CityFlooded, label = "City flooded!",      labelColor = new Color(1f, 0.58f, 0.48f) },
+            new StageLook { stage = FloodStage.GoalMissed,  label = "Goal not reached!",  labelColor = new Color(1f, 0.78f, 0.42f) },
         };
 
         private CanvasGroup _group;

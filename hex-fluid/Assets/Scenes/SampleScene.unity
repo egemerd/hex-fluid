@@ -1714,6 +1714,9 @@ MonoBehaviour:
   spawnRadius: 0.81
   spawnHeight: 9.25
   fallSpeed: 11.5
+  keepInsideArea: 1
+  wallPadding: 0.1
+  wallBounce: 0.3
   minSpacing: 1.09
   placementTries: 24
   randomFallRotation: 1

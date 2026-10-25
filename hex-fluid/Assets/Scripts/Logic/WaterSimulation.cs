@@ -16,15 +16,17 @@ namespace HexFluid
     ///     only pushes water AWAY from the side it arrived on, never back over itself.
     ///     A fixed map wall always blocks (see ItemPlacementSystem).
     ///   - It can't enter a resource tile.
-    ///   - Entering a City (house) = LOSE.
-    ///   - Water keeps spreading until no tile can take more; if no city got flooded = WIN.
+    ///   - Entering a City (house) = LOSE, straight away.
+    ///   - Water keeps spreading until no tile can take more. Then: if it reached every
+    ///     Goal tile (and no city got flooded) = WIN, otherwise = LOSE (goal not reached).
+    ///     A level with no Goal tile wins just by keeping the cities dry.
     ///
     /// How it plays: StartSimulation() works the whole flood out up front with the
     /// rules above (which tile gets water on which step, and from where), then plays
     /// it back on one continuous clock, WaterTime, measured in tiles. The water
     /// front sweeps smoothly across the board like a baked fluid simulation instead
     /// of jumping one ring of tiles at a time. LOSE fires when the visible water
-    /// reaches a city; WIN when it has settled.
+    /// reaches a city; WIN (or LOSE, goal not reached) when it has settled.
     ///
     /// Look: every tile the water will reach gets a FloodedTile, which sinks it just
     /// ahead of the front. The water is one continuous 3D surface (WaterBody) over the
@@ -47,8 +49,17 @@ namespace HexFluid
         Calm,           // nothing yet (the board is still landing)
         Cloudburst,     // the source has burst: water is welling up, waiting for Start
         Flooding,       // the water is running across the board
-        Contained,      // settled without reaching a city: WIN
+        Contained,      // reached the goal and settled without reaching a city: WIN
         CityFlooded,    // the water reached a city: LOSE
+        GoalMissed,     // settled without ever reaching the goal: LOSE
+    }
+
+    /// <summary>Why a level was lost.</summary>
+    public enum LoseReason
+    {
+        None,
+        CityFlooded,    // the water reached a city
+        GoalNotReached, // the water settled without reaching every goal tile
     }
 
     public class WaterSimulation : MonoBehaviour
@@ -123,6 +134,13 @@ namespace HexFluid
         public bool Running { get; private set; }
         public bool Won { get; private set; }
         public bool Lost { get; private set; }
+
+        /// <summary>Why the level was lost (None while not lost).</summary>
+        public LoseReason LostBecause { get; private set; }
+
+        /// <summary>How many goal tiles the visible water has reached / the level has.</summary>
+        public int GoalsReached { get; private set; }
+        public int GoalCount { get; private set; }
 
         /// <summary>The playback clock, in tiles: water reaches a tile's centre at its arrival step.</summary>
         public float WaterTime { get; private set; }
@@ -240,9 +258,20 @@ namespace HexFluid
             if (_sourcesRun != null) StopCoroutine(_sourcesRun);
             _sourcesRun = null;
             ClearWater();
-            Won = Lost = false;
+            ResetResult();
             SetWaterTime(0f);
             SetStage(FloodStage.Calm);
+        }
+
+        private void ResetResult()
+        {
+            Won = Lost = false;
+            LostBecause = LoseReason.None;
+            GoalsReached = 0;
+            GoalCount = 0;
+            if (Level != null)
+                foreach (var t in Level.tiles)
+                    if (t.role == TileRole.Goal) GoalCount++;
         }
 
         /// <summary>Begin the water flow from the start. Hook your Start button to this.</summary>
@@ -259,7 +288,7 @@ namespace HexFluid
             ClearWater();
             Level.BuildLookups();
             if (items == null) items = FindFirstObjectByType<ItemPlacementSystem>();
-            Won = Lost = false;
+            ResetResult();
 
             int lastStep = PlanFlood();
             _endTime = lastStep + 0.5f;                          // the last tiles are full
@@ -292,7 +321,11 @@ namespace HexFluid
                 if (!decided && WaterTime >= _endTime)
                 {
                     decided = true;
-                    if (!Lost) Win();                            // settled and no city flooded
+                    if (!Lost)                                   // settled and no city flooded...
+                    {
+                        if (GoalsReached >= GoalCount) Win();    // ...and the water got to every goal
+                        else Lose(LoseReason.GoalNotReached);
+                    }
                 }
                 if (WaterTime >= _visualEnd) break;
 
@@ -313,7 +346,7 @@ namespace HexFluid
 
         /// <summary>
         /// A tile counts as reached once the front crosses into it (half a tile before
-        /// its centre). That's when its indicator appears and a city loses.
+        /// its centre). That's when its indicator appears, a city loses and a goal counts.
         /// </summary>
         private void RevealReached()
         {
@@ -322,7 +355,10 @@ namespace HexFluid
                 if (_reached.Contains(kv.Key) || WaterTime < kv.Value - 0.5f) continue;
                 _reached.Add(kv.Key);
                 if (showTileIndicators) _waterViews[kv.Key] = SpawnWater(kv.Key);
-                if (!Lost && Level.GetTile(kv.Key).role == TileRole.City) Lose();
+
+                TileRole role = Level.GetTile(kv.Key).role;
+                if (role == TileRole.Goal) GoalsReached++;
+                if (!Lost && role == TileRole.City) Lose(LoseReason.CityFlooded);
             }
         }
 
@@ -644,17 +680,26 @@ namespace HexFluid
         private void Win()
         {
             Won = true;
-            Debug.Log("WIN — the water settled and no city was flooded.", this);
+            Debug.Log("WIN — the water reached the goal and no city was flooded.", this);
             SetStage(FloodStage.Contained);
             WonEvent?.Invoke();
         }
 
         /// <summary>The water keeps flowing to the end of the plan; the result is already decided.</summary>
-        private void Lose()
+        private void Lose(LoseReason reason)
         {
             Lost = true;
-            Debug.Log("LOSE — the water reached a city.", this);
-            SetStage(FloodStage.CityFlooded);
+            LostBecause = reason;
+            if (reason == LoseReason.GoalNotReached)
+            {
+                Debug.Log($"LOSE — the water settled without reaching the goal ({GoalsReached}/{GoalCount} goals).", this);
+                SetStage(FloodStage.GoalMissed);
+            }
+            else
+            {
+                Debug.Log("LOSE — the water reached a city.", this);
+                SetStage(FloodStage.CityFlooded);
+            }
             LostEvent?.Invoke();
         }
 

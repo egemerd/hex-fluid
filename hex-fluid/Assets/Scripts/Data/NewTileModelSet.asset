@@ -20,4 +20,6 @@ MonoBehaviour:
   roleModels:
   - role: 3
     model: {fileID: 4826917960818844771, guid: b9af1e3775ba5da48b24395f0edc1302, type: 3}
+  - role: 2
+    model: {fileID: 4826917960818844771, guid: c45e8a9ee7dc7a44e87380cd4fa9e414, type: 3}
   defaultModel: {fileID: 4855322414083108259, guid: f1fe3e6027327774c9e628c430e4a11b, type: 3}

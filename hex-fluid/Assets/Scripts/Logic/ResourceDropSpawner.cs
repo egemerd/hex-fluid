@@ -41,6 +41,16 @@ namespace HexFluid
         [Tooltip("Initial downward speed. Higher = drops faster. 0 = gravity only.")]
         public float fallSpeed = 8f;
 
+        [Header("Stay in the area")]
+        [Tooltip("ON = an invisible round wall at the edge of the area: drops that bounce or get pushed out hit it and stay inside.")]
+        public bool keepInsideArea = true;
+
+        [Tooltip("Extra room past 'spawnRadius' before the wall, so drops at the edge still have space to bounce.")]
+        [Min(0f)] public float wallPadding = 0.1f;
+
+        [Tooltip("How much a drop bounces back off the wall. 0 = stops dead at it, 1 = full bounce.")]
+        [Range(0f, 1f)] public float wallBounce = 0.3f;
+
         [Header("No overlap")]
         [Tooltip("Minimum gap between drops so they don't land on top of each other.")]
         public float minSpacing = 0.4f;
@@ -83,7 +93,10 @@ namespace HexFluid
         [Tooltip("Add a Collider + Rigidbody to a prefab that has none.")]
         public bool ensurePhysics = true;
 
-        private struct Placed { public GameObject go; public Vector3 slot; }
+        private struct Placed { public GameObject go; public Rigidbody rb; public Vector3 slot; }
+
+        /// <summary>World centre of the drop area, on the table.</summary>
+        private Vector3 AreaCenter => table.position + table.rotation * spawnAreaOffset;
 
         private Transform _root;
         private readonly Dictionary<ResourceType, List<Placed>> _drops = new Dictionary<ResourceType, List<Placed>>();
@@ -199,8 +212,7 @@ namespace HexFluid
         {
             EnsureRoot();
 
-            Vector3 center = table.position + table.rotation * spawnAreaOffset;
-            Vector3 slot = FindFreeSlot(center);                 // ground-level spot, no overlap
+            Vector3 slot = FindFreeSlot(AreaCenter);             // ground-level spot, no overlap
             Vector3 pos = slot + table.up * spawnHeight;         // start high above it
 
             GameObject go = Instantiate(prefab, pos, FallRotation(prefab), _root);
@@ -224,7 +236,64 @@ namespace HexFluid
                 StartCoroutine(SettleAfterLanding(rb, landSound));
             }
 
-            return new Placed { go = go, slot = slot };
+            return new Placed { go = go, rb = rb, slot = slot };
+        }
+
+        // ---- Keep them in the area --------------------------------------------------
+
+        /// <summary>
+        /// The invisible wall: any moving drop whose centre has left the circle is put
+        /// back on its edge, and its outward speed is turned around (scaled by
+        /// wallBounce). Only sideways movement is touched, so falling and landing on the
+        /// table work as normal. Done in code rather than with wall colliders, so mouse
+        /// clicks and other objects never bump into it.
+        /// </summary>
+        private void FixedUpdate()
+        {
+            if (!keepInsideArea || table == null) return;
+
+            Vector3 center = AreaCenter;
+            Vector3 up = table.up;
+            float limit = spawnRadius + wallPadding;
+
+            foreach (var list in _drops.Values)
+            foreach (var p in list)
+            {
+                Rigidbody rb = p.rb;
+                if (rb == null || rb.isKinematic) continue;      // settled or vanishing: already still
+
+                Vector3 offset = Vector3.ProjectOnPlane(rb.position - center, up);  // sideways only
+                float dist = offset.magnitude;
+                if (dist <= limit) continue;
+
+                Vector3 outward = offset / dist;
+                rb.position -= outward * (dist - limit);         // back onto the wall
+
+                float outSpeed = Vector3.Dot(rb.linearVelocity, outward);
+                if (outSpeed > 0f) rb.linearVelocity -= outward * outSpeed * (1f + wallBounce);
+            }
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            Transform t = table != null ? table : transform;
+            Vector3 center = t.position + t.rotation * spawnAreaOffset;
+            DrawCircle(center, t, spawnRadius, new Color(1f, 0.8f, 0.2f));          // where drops appear
+            if (keepInsideArea) DrawCircle(center, t, spawnRadius + wallPadding, Color.red); // the wall
+        }
+
+        private static void DrawCircle(Vector3 center, Transform t, float radius, Color color)
+        {
+            Gizmos.color = color;
+            const int segments = 48;
+            Vector3 prev = center + t.right * radius;
+            for (int i = 1; i <= segments; i++)
+            {
+                float a = i * Mathf.PI * 2f / segments;
+                Vector3 next = center + (t.right * Mathf.Cos(a) + t.forward * Mathf.Sin(a)) * radius;
+                Gizmos.DrawLine(prev, next);
+                prev = next;
+            }
         }
 
         /// <summary>Waits for the drop to land, plays its landing sound, then (if on) eases it to a full stop.</summary>
