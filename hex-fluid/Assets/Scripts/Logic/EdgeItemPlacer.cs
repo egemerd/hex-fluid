@@ -20,7 +20,7 @@ namespace HexFluid
         public HexBoard board;
         public ItemPlacementSystem items;
         public ItemCrafting crafting;
-        public Camera cam;
+        private Camera cam => GameCamera.Current;   // set once on HexBoard ('Game Camera')
 
         [Header("Placement")]
         [Tooltip("Items that can be crafted/placed (the craft bar shows these).")]
@@ -40,7 +40,7 @@ namespace HexFluid
         public SoundSO deniedSound;
 
         [Header("Denied placement")]
-        [Tooltip("Camera to shake when a placement is refused. Empty = 'cam' (a CameraShake is added to it).")]
+        [Tooltip("Camera to shake when a placement is refused. Empty = the game camera set on HexBoard (a CameraShake is added to it).")]
         public CameraShake cameraShake;
 
         [Tooltip("Seconds the screen shakes when you try to build where you can't.")]
@@ -61,7 +61,6 @@ namespace HexFluid
             if (board == null) board = FindObjectOfType<HexBoard>();
             if (items == null) items = FindObjectOfType<ItemPlacementSystem>();
             if (crafting == null) crafting = FindObjectOfType<ItemCrafting>();
-            if (cam == null) cam = Camera.main;
         }
 
         /// <summary>
@@ -96,7 +95,7 @@ namespace HexFluid
         private void Update()
         {
             if (!placementEnabled || Level == null || items == null || InputBlocker.Blocked) return;
-            if (cam == null) { cam = Camera.main; if (cam == null) return; }
+            if (cam == null) return;
 
             if (LeftPressed()) TryPlaceUnderMouse();
             else if (RightPressed()) TryPickUpUnderMouse();

@@ -34,8 +34,7 @@ namespace HexFluid
         [Header("References (auto-found if empty)")]
         public EdgeItemPlacer placer;
         public ItemCrafting crafting;
-        [Tooltip("Camera used for picking. Empty = Camera.main.")]
-        public Camera cam;
+        private Camera cam => GameCamera.Current;   // set once on HexBoard ('Game Camera')
 
         [Header("Hover")]
         [Tooltip("Size while the mouse is over it (1 = no change).")]
@@ -108,7 +107,6 @@ namespace HexFluid
 
             if (placer == null) placer = FindFirstObjectByType<EdgeItemPlacer>();
             if (crafting == null) crafting = FindFirstObjectByType<ItemCrafting>();
-            if (cam == null) cam = Camera.main;
 
             _collider = GetComponent<Collider>();
             if (_collider == null && _sprite.sprite != null)
@@ -191,7 +189,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (cam == null) { cam = Camera.main; if (cam == null) return; }
+            if (cam == null) return;
 
             IsHovered = !InputBlocker.Blocked && RaycastHitsSelf();
             if (IsHovered)

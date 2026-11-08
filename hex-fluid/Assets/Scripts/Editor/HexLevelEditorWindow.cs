@@ -71,6 +71,7 @@ namespace HexFluid.EditorTools
                 return;
             }
 
+            DrawBossControls();
             DrawPaintControls();
             UpdateViewFlip();
             DrawCanvas();
@@ -97,6 +98,32 @@ namespace HexFluid.EditorTools
                 if (EditorUtility.DisplayDialog("Clear Board", "Remove all tiles and edges?", "Yes", "Cancel"))
                     ClearBoard();
             EditorGUILayout.EndHorizontal();
+        }
+
+        /// <summary>Boss level on/off and which boss prefab it spawns.</summary>
+        private void DrawBossControls()
+        {
+            EditorGUILayout.BeginHorizontal(EditorStyles.helpBox);
+            EditorGUI.BeginChangeCheck();
+            bool isBoss = EditorGUILayout.ToggleLeft(
+                new GUIContent("Boss level", "This level is a boss puzzle: its boss is spawned when the level starts."),
+                level.isBoss, EditorStyles.boldLabel, GUILayout.Width(100));
+            BossBehaviour boss;
+            using (new EditorGUI.DisabledScope(!isBoss))
+                boss = (BossBehaviour)EditorGUILayout.ObjectField(
+                    new GUIContent("Boss", "Prefab with a BossBehaviour (e.g. EmptyBoss) on its root."),
+                    level.boss, typeof(BossBehaviour), false);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(level, "Edit Boss");
+                level.isBoss = isBoss;
+                level.boss = boss;
+                EditorUtility.SetDirty(level);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (level.isBoss && level.boss == null)
+                EditorGUILayout.HelpBox("Boss level without a boss: assign a boss prefab, or it plays like a normal level.", MessageType.Warning);
         }
 
         private void DrawPaintControls()
@@ -148,7 +175,7 @@ namespace HexFluid.EditorTools
 
         private void DrawCanvas()
         {
-            _canvasRect = GUILayoutUtility.GetRect(position.width, position.height - 210);
+            _canvasRect = GUILayoutUtility.GetRect(position.width, position.height - 236);
             GUI.Box(_canvasRect, GUIContent.none);
 
             Handles.BeginGUI();

@@ -6,7 +6,7 @@ namespace HexFluid
 {
     /// <summary>
     /// A complete, serialized level. The editor tool writes this; the game
-    /// reads it. This is the contract between tool and runtime — keep it
+    /// reads it. This is the contract between tool and runtime â€” keep it
     /// clean and everything downstream stays modular.
     ///
     /// Create via: Assets > Create > HexFluid > Level.
@@ -38,6 +38,16 @@ namespace HexFluid
         [Header("Harvest")]
         [Tooltip("Most resource tiles the player may harvest in this level. 0 = unlimited.")]
         [Min(0)] public int maxHarvests = 0;
+
+        [Header("Boss")]
+        [Tooltip("This level is a boss puzzle. When it starts, its boss is spawned and the boss's abilities run while the level is played (see BossDirector).")]
+        public bool isBoss = false;
+
+        [Tooltip("The boss of this level: a prefab with a BossBehaviour (e.g. EmptyBoss) on its root. Only used when 'Is Boss' is on.")]
+        public BossBehaviour boss;
+
+        /// <summary>True if this is a boss level with a boss assigned, so there's something to spawn.</summary>
+        public bool HasBoss => isBoss && boss != null;
 
         // ---- Fast lookup built at load; not serialized ----
         private Dictionary<HexCoord, HexTileData> _tileLookup;
@@ -113,8 +123,9 @@ namespace HexFluid
             }
 
             if (tiles.Count == 0) problems.Add("Board has no tiles.");
-            if (sources == 0) problems.Add("No Source tile — water has nowhere to start.");
-            if (goals == 0) problems.Add("No Goal tile — level can never be won.");
+            if (sources == 0) problems.Add("No Source tile â€” water has nowhere to start.");
+            if (goals == 0) problems.Add("No Goal tile â€” level can never be won.");
+            if (isBoss && boss == null) problems.Add("Boss level has no boss assigned â€” it will play like a normal level.");
 
             // Every goal must be reachable from some source ignoring barricades
             // (barricades are player-placed; map walls are not). We check with

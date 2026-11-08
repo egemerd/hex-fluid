@@ -25,6 +25,11 @@ namespace HexFluid
         [Tooltip("Per-type models: each resource / role gets its own hex model. Optional.")]
         public TileModelSet modelSet;
 
+        [Header("Camera")]
+        [Tooltip("THE camera the game is played through. Set it here once: hover, harvesting, placing, the craft paper, 3D buttons, " +
+                 "the boss camera turn, stickers and the stage badge all use it (see GameCamera). Empty = Camera.main.")]
+        public Camera gameCamera;
+
         [Header("Optional visuals")]
         [Tooltip("Prefab shown on a flooded tile (e.g. a water plane). Optional.")]
         public GameObject waterOverlayPrefab;
@@ -117,6 +122,10 @@ namespace HexFluid
         private Vector3 _homePosition, _homeScale;
         private bool _homeSaved;
         private float _fitScale = 1f;
+
+        void OnEnable() => GameCamera.Register(this);
+
+        void OnDisable() => GameCamera.Unregister(this);
 
         void Start()
         {

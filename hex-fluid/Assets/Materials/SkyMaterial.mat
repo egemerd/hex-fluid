@@ -52,10 +52,10 @@ Material:
     - _SecondNoiseScale: 26.57
     m_Colors:
     - _Color: {r: 0, g: 0, b: 0, a: 1}
-    - _FresnelColor: {r: 0, g: 0, b: 0, a: 1}
+    - _FresnelColor: {r: 0.5283019, g: 0.5283019, b: 0.5283019, a: 1}
     - _GradiendNoiseSpeed: {r: -0.04, g: -0.28, b: 0, a: 0}
-    - _MainColor: {r: 0.21800464, g: 0.6509434, b: 0.5655956, a: 1}
-    - _MovingColor: {r: 0.31305623, g: 0.32458708, b: 0.6320754, a: 1}
+    - _MainColor: {r: 0.67798877, g: 0.9150943, b: 0.67768776, a: 1}
+    - _MovingColor: {r: 0.5660378, g: 0.4085084, b: 0.45919207, a: 1}
     - _NoiseSpeed: {r: 0.16, g: 0.3, b: 0, a: 0}
     - _SecondGradientNoiseSpeed: {r: -0.08, g: -0.2, b: 0, a: 0}
     - _SecondNoiseSpeed: {r: -0.36, g: 0.1, b: 0, a: 0}

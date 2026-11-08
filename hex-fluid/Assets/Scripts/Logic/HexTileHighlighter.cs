@@ -9,7 +9,7 @@ namespace HexFluid
 {
     /// <summary>
     /// Raises the tile under the mouse on the Y axis, smoothly, and eases it back
-    /// down when you move off it. Nothing is drawn or spawned — it only moves the
+    /// down when you move off it. Nothing is drawn or spawned â€” it only moves the
     /// existing tile objects.
     ///
     /// Plays nicely with TileDropAnimator: while a tile is still falling in, the
@@ -34,8 +34,7 @@ namespace HexFluid
         [Tooltip("Parent whose direct children are the tile objects. Empty = 'board'.")]
         public Transform tilesParent;
 
-        [Tooltip("Camera used for picking. Empty = Camera.main.")]
-        public Camera cam;
+        private Camera cam => GameCamera.Current;   // set once on HexBoard ('Game Camera')
 
         [Header("Board surface")]
         [Tooltip("Hex radius (center to corner). Taken from the board's level when it loads.")]
@@ -84,7 +83,6 @@ namespace HexFluid
             if (hexBoard == null) hexBoard = GetComponent<HexBoard>();
             if (hexBoard == null) hexBoard = FindFirstObjectByType<HexBoard>();
             _boardT = BoardT;
-            if (cam == null) cam = Camera.main;
         }
 
         private void OnEnable()
@@ -129,7 +127,7 @@ namespace HexFluid
         /// <summary>
         /// Maps each tile object under 'tilesParent' to its hex coord by its X/Z
         /// (ignores Y, so it works even while tiles are mid-fall). Resting heights
-        /// are captured lazily once a tile has landed — not here.
+        /// are captured lazily once a tile has landed â€” not here.
         /// </summary>
         public void RebuildTileMap()
         {
@@ -166,7 +164,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (cam == null) { cam = Camera.main; if (cam == null) return; }
+            if (cam == null) return;
             _boardT = BoardT;
 
             Transform root = TilesRoot;

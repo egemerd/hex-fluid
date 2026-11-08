@@ -265,7 +265,7 @@ namespace HexFluid
         /// <summary>The screen's right and up directions, laid flat onto the table.</summary>
         private static void ScreenAxes(Vector3 up, out Vector3 right, out Vector3 screenUp)
         {
-            Camera cam = Camera.main;
+            Camera cam = GameCamera.Current;
             Vector3 camUp = cam != null ? cam.transform.up : Vector3.forward;
             Vector3 camFwd = cam != null ? cam.transform.forward : Vector3.down;
             screenUp = Vector3.ProjectOnPlane(camUp, up);

@@ -13,7 +13,7 @@ namespace HexFluid
     /// On a completed click it logs a message and fires onClick / Clicked.
     ///
     /// Setup:
-    ///   - Put this on a Cube (GameObject > 3D Object > Cube) — it already has a
+    ///   - Put this on a Cube (GameObject > 3D Object > Cube) â€” it already has a
     ///     BoxCollider, which the raycast needs.
     ///   - Press Play, move the mouse over it, click.
     ///   - Hook your "start the game" logic to onClick (inspector) or Clicked (code).
@@ -23,9 +23,7 @@ namespace HexFluid
     [RequireComponent(typeof(Collider))]
     public class PressableButton3D : MonoBehaviour
     {
-        [Header("References")]
-        [Tooltip("Camera used for picking. Empty = Camera.main.")]
-        public Camera cam;
+        private Camera cam => GameCamera.Current;   // set once on HexBoard ('Game Camera')
 
         [Header("Motion (local Y, world units)")]
         [Tooltip("How far it dips while hovered.")]
@@ -65,7 +63,6 @@ namespace HexFluid
 
         private void Awake()
         {
-            if (cam == null) cam = Camera.main;
             _baseY = transform.localPosition.y;
 
             if (GetComponent<Collider>() == null)
@@ -74,7 +71,7 @@ namespace HexFluid
 
         private void Update()
         {
-            if (cam == null) { cam = Camera.main; if (cam == null) return; }
+            if (cam == null) return;
 
             IsHovered = (ignoreInputBlocker || !InputBlocker.Blocked) && RaycastHitsSelf();   // a popup is open: can't be clicked through it
 

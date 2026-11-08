@@ -95,7 +95,7 @@ namespace HexFluid
 
             if (faceCamera)
             {
-                Camera cam = Camera.main;
+                Camera cam = GameCamera.Current;
                 Quaternion face = cam != null ? cam.transform.rotation : Quaternion.identity;
                 transform.rotation = face * Quaternion.Euler(0f, 0f, angle);
             }

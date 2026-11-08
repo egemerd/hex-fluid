@@ -56,6 +56,12 @@ namespace HexFluid
 
         public IEnumerable<PlacedItem> Items => _items;
 
+        /// <summary>Fires after an item is placed on the board.</summary>
+        public event System.Action<PlacedItem> ItemPlaced;
+
+        /// <summary>Fires after a placed item is taken off (picked up or knocked off). Not fired when a whole level is cleared.</summary>
+        public event System.Action<PlacedItem> ItemRemoved;
+
         private void Awake()
         {
             if (board == null) board = GetComponent<HexBoard>();
@@ -200,6 +206,7 @@ namespace HexFluid
                 _edgeItems[e.Key] = p;
             }
             _items.Add(p);
+            ItemPlaced?.Invoke(p);
             return p;
         }
 
@@ -210,6 +217,7 @@ namespace HexFluid
             foreach (var v in p.views) if (v) DestroySafe(v);
             foreach (var e in p.edges) _edgeItems.Remove(e.Key);
             _items.Remove(p);
+            ItemRemoved?.Invoke(p);
         }
 
         public void ClearAll()

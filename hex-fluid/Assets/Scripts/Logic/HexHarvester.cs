@@ -11,7 +11,7 @@ namespace HexFluid
     /// The harvest phase. At the start of the game the player clicks resource tiles
     /// to collect what's on them. Each tile is read from LevelData (its ResourceType
     /// and resourceAmount), added to the PlayerInventory, and marked harvested so it
-    /// can't be taken twice. Nothing is destroyed — the asset is left untouched and
+    /// can't be taken twice. Nothing is destroyed â€” the asset is left untouched and
     /// "harvested" is tracked only at runtime.
     ///
     /// Setup:
@@ -25,7 +25,7 @@ namespace HexFluid
     /// Fits the build phase you'll add next:
     ///   - Harvesting only works while HarvestingActive is true.
     ///   - When the last resource is taken (or the limit is hit) it ends the phase
-    ///     and fires HarvestPhaseEnded — start your build phase there.
+    ///     and fires HarvestPhaseEnded â€” start your build phase there.
     ///   - Harvested(tile, type, amount) fires per harvest, for the "something happens
     ///     after" you mentioned (VFX, swap the tile model, etc.).
     /// </summary>
@@ -38,8 +38,7 @@ namespace HexFluid
         [Tooltip("Transform the tiles are positioned under (coordinate space). Empty = the HexBoard.")]
         public Transform board;
 
-        [Tooltip("Camera used for picking. Empty = Camera.main.")]
-        public Camera cam;
+        private Camera cam => GameCamera.Current;   // set once on HexBoard ('Game Camera')
 
         [Tooltip("Where harvested resources go. Empty = one is found/added on this object.")]
         public PlayerInventory inventory;
@@ -97,7 +96,6 @@ namespace HexFluid
             if (hexBoard == null) hexBoard = GetComponent<HexBoard>();
             if (hexBoard == null) hexBoard = FindFirstObjectByType<HexBoard>();
             _boardT = BoardT;
-            if (cam == null) cam = Camera.main;
             if (placer == null) placer = FindFirstObjectByType<EdgeItemPlacer>();
             if (pickaxes == null) pickaxes = FindFirstObjectByType<PickaxeRack>();
 
@@ -227,7 +225,7 @@ namespace HexFluid
         {
             if (!harvestingActive || InputBlocker.Blocked) return;
             if (placer != null && placer.IsBuilding) return;   // a build item is chosen: the click is for placing
-            if (cam == null) { cam = Camera.main; if (cam == null) return; }
+            if (cam == null) return;
             _boardT = BoardT;
 
             if (!LeftClicked()) return;

@@ -155,6 +155,30 @@ namespace HexFluid
         /// <summary>Where the flood is at right now.</summary>
         public FloodStage Stage { get; private set; } = FloodStage.Calm;
 
+        /// <summary>
+        /// True while anyone holds the flood paused (see Pause). The water front, the
+        /// sinking tiles and the win / lose checks all wait; the surface keeps rippling.
+        /// </summary>
+        public bool Paused => _pausers.Count > 0;
+
+        private readonly HashSet<object> _pausers = new HashSet<object>();
+
+        /// <summary>
+        /// Holds the flood where it is (e.g. while the camera looks at a boss). Pass
+        /// yourself as 'owner' and call Resume(owner) when done; the flood runs again
+        /// once every owner has resumed. A level change clears all pauses.
+        /// </summary>
+        public void Pause(object owner)
+        {
+            if (owner != null) _pausers.Add(owner);
+        }
+
+        /// <summary>Lets go of a Pause(owner). Safe to call when that owner isn't pausing.</summary>
+        public void Resume(object owner)
+        {
+            if (owner != null) _pausers.Remove(owner);
+        }
+
         /// <summary>Fires once when the player wins.</summary>
         public event Action WonEvent;
         /// <summary>Fires once when the player loses.</summary>
@@ -267,6 +291,7 @@ namespace HexFluid
             ClearWater();
             ResetResult();
             SetWaterTime(0f);
+            _pausers.Clear();
             SetStage(FloodStage.Calm);
         }
 
@@ -340,6 +365,7 @@ namespace HexFluid
                 if (WaterTime >= _visualEnd) break;
 
                 yield return null;
+                if (Paused) continue;                            // held (e.g. a boss cutscene): the clock waits
                 SetWaterTime(Mathf.Min(_visualEnd, WaterTime + Time.deltaTime / Mathf.Max(0.05f, stepInterval)));
                 RevealReached();
             }

@@ -160,7 +160,7 @@ namespace HexFluid
             if (cameraShakeStrength <= 0f) return;
             if (cameraShake == null)
             {
-                Camera cam = harvester != null && harvester.cam != null ? harvester.cam : Camera.main;
+                Camera cam = GameCamera.Current;
                 if (cam == null) return;
                 cameraShake = cam.GetComponent<CameraShake>();
                 if (cameraShake == null) cameraShake = cam.gameObject.AddComponent<CameraShake>();

@@ -35,8 +35,11 @@ namespace HexFluid
         public PlayerInventory inventory;
         public ItemCrafting crafting;
 
+        [Tooltip("Runs the boss of boss levels. Added to this object automatically if the scene has none.")]
+        public BossDirector bosses;
+
         [Header("Levels")]
-        [Tooltip("Levels in play order.")]
+        [Tooltip("Levels in play order. Mark a level as a boss level on the level asset itself (Is Boss + Boss).")]
         public List<LevelData> levels = new List<LevelData>();
 
         [Tooltip("Index of the level to start on (0 = the first).")]
@@ -79,6 +82,9 @@ namespace HexFluid
         public LevelData CurrentLevel => CurrentIndex >= 0 && CurrentIndex < levels.Count ? levels[CurrentIndex] : null;
         public bool HasNextLevel => CurrentIndex + 1 < levels.Count;
 
+        /// <summary>True if the level being played is marked as a boss level.</summary>
+        public bool IsBossLevel => CurrentLevel != null && CurrentLevel.isBoss;
+
         /// <summary>Fires when a level has been built: (index, level asset).</summary>
         public event Action<int, LevelData> LevelStarted;
 
@@ -95,6 +101,8 @@ namespace HexFluid
             if (water == null) water = FindFirstObjectByType<WaterSimulation>();
             if (inventory == null) inventory = FindFirstObjectByType<PlayerInventory>();
             if (crafting == null) crafting = FindFirstObjectByType<ItemCrafting>();
+            if (bosses == null) bosses = FindFirstObjectByType<BossDirector>();
+            if (bosses == null) bosses = gameObject.AddComponent<BossDirector>();
 
             // Hand the board its first level before anything Starts, so it builds
             // that one (once) instead of whatever is assigned on it in the scene.
